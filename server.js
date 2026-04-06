@@ -10,18 +10,17 @@ app.use(express.static(path.join(__dirname)));
 app.post("/token", async (req, res) => {
   try {
     const { clientId, clientSecret } = req.body;
-    const body = new URLSearchParams({
-      client_id: clientId,
-      client_secret: clientSecret,
-      grant_type: "client_credentials"
-    });
     const r = await fetch("https://open-api.guesty.com/oauth2/token", {
       method: "POST",
       headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
+        "Content-Type": "application/json",
         "Accept": "application/json"
       },
-      body: body.toString()
+      body: JSON.stringify({
+        clientId,
+        clientSecret,
+        grantType: "client_credentials"
+      })
     });
     const data = await r.json();
     res.json(data);
