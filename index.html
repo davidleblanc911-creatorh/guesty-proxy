@@ -1,14 +1,527 @@
 <!DOCTYPE html>
+
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>Dashboard — Finalta Capital</title>
-<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-<script src="https://unpkg.com/recharts@2.12.0/umd/Recharts.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-body{background:#07100a;color:#dff0e6;font-family:Helvetica,Arial,sans-serif;min-height:100vh}
-input,select{background:#0a1510;border:1px solid #1f​​​​​​​​​​​​​​​​
+body{background:#07100a;color:#dff0e6;font-family:-apple-system,Helvetica,Arial,sans-serif;font-size:14px}
+.header{background:linear-gradient(180deg,#0d1f12,#07100a);border-bottom:1px solid #162318;padding:16px 18px 12px}
+.eyebrow{font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:#3d6b50;font-family:monospace;margin-bottom:3px}
+.title{font-size:20px;font-weight:700;margin-bottom:12px}
+.controls{background:#0a150c;border-bottom:1px solid #162318;padding:8px 18px;display:flex;gap:7px;flex-wrap:wrap;align-items:center}
+.label{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:#3d6b50;font-family:monospace}
+.chip{background:transparent;border:1px solid #1f3325;border-radius:20px;padding:5px 12px;font-size:12px;color:#7aad90;cursor:pointer;white-space:nowrap;font-family:inherit}
+.chip.on{background:#1a3a22;border-color:#2d6a45;color:#4ade80}
+.chip-amber.on{background:#f59e0b22;border-color:#f59e0b;color:#f59e0b}
+.chip-blue.on{background:#60a5fa22;border-color:#60a5fa;color:#60a5fa}
+.chip-orange.on{background:#fb923c22;border-color:#fb923c;color:#fb923c}
+.chip-purple.on{background:#a78bfa22;border-color:#a78bfa;color:#a78bfa}
+.periodbar{padding:6px 18px;font-size:11px;color:#3d6b50;font-family:monospace;background:#080f0a;border-bottom:1px solid #162318}
+.main{padding:12px 18px;display:flex;flex-direction:column;gap:10px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:7px}
+.kpi{border-radius:11px;padding:12px 15px;border:1px solid #162318;background:#0d1810}
+.kpi.hi{background:linear-gradient(135deg,#122a1a,#0a1c10);border-color:#2d6a45}
+.kpi.warn{border-color:#5a3a10}
+.kpi-label{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:#3d6b50;font-family:monospace}
+.kpi-val{font-size:20px;font-weight:700;margin:3px 0 2px}
+.kpi-sub{font-size:11px;color:#3d6b50}
+.card{background:#0d1810;border:1px solid #162318;border-radius:12px;padding:14px 18px}
+.sec{font-size:10px;letter-spacing:.15em;text-transform:uppercase;color:#3d6b50;font-family:monospace;margin-bottom:8px}
+.bar-row{margin-bottom:8px}
+.bar-label{display:flex;justify-content:space-between;margin-bottom:3px;font-size:12px}
+.bar-track{background:#131f16;border-radius:3px;height:4px}
+.bar-fill{height:100%;border-radius:3px}
+table{width:100%;border-collapse:collapse}
+th{padding:7px 8px;color:#3d6b50;font-size:10px;text-transform:uppercase;font-family:monospace;border-bottom:1px solid #162318;text-align:right;white-space:nowrap}
+th:first-child{text-align:left}
+td{padding:7px 8px;border-bottom:1px solid #0f1c12;font-size:12px;text-align:right;font-family:monospace}
+td:first-child{text-align:left;font-family:-apple-system,Helvetica,sans-serif}
+.badge{font-size:10px;border-radius:4px;padding:2px 6px;font-family:monospace}
+.btn-grp{display:flex;gap:5px;flex-wrap:wrap}
+select{background:#0d1810;border:1px solid #1f3325;border-radius:7px;color:#dff0e6;padding:5px 8px;font-size:12px;outline:none;font-family:inherit}
+.err{color:#f87171;font-size:12px;margin-top:6px}
+.info{color:#7aad90;font-size:11px;margin-top:6px}
+.tag-demo{background:#2a1a0a;border:1px solid #5a3a10;border-radius:20px;padding:3px 10px;font-size:10px;color:#f59e0b;font-family:monospace}
+.tag-live{background:#0a2a14;border:1px solid #2d6a45;border-radius:20px;padding:3px 10px;font-size:10px;color:#4ade80;font-family:monospace}
+.divider{width:1px;height:18px;background:#1f3325;flex-shrink:0}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="eyebrow">Finalta Capital × Guesty</div>
+  <div class="title">Revenus locatifs</div>
+  <div class="btn-grp" id="header-btns">
+    <span class="tag-demo" id="mode-badge">DÉMO</span>
+    <button class="chip" id="btn-connect" onclick="connect()">⚡ Connecter Guesty</button>
+    <button class="chip" id="btn-disconnect" style="display:none;border-color:#5a2a2a;color:#f87171" onclick="disconnect()">Déconnecter</button>
+  </div>
+  <div class="err" id="err-msg" style="display:none"></div>
+  <div class="info" id="info-msg" style="display:none"></div>
+</div>
+
+<!-- PÉRIODE -->
+
+<div class="controls">
+  <span class="label">Période</span>
+  <button class="chip" id="pm-MC" onclick="setPeriodMode('MC')">Mois complet</button>
+  <button class="chip" id="pm-MJ" onclick="setPeriodMode('MJ')">Mois ce jour</button>
+  <button class="chip" id="pm-TC" onclick="setPeriodMode('TC')">Trim. complet</button>
+  <button class="chip on" id="pm-TJ" onclick="setPeriodMode('TJ')">Trim. ce jour</button>
+  <select id="q-select" onchange="setCustomQ(this.value)">
+    <option value="0">T1 2025</option>
+    <option value="1">T2 2025</option>
+    <option value="2">T3 2025</option>
+    <option value="3">T4 2025</option>
+    <option value="4" selected>T1 2026</option>
+    <option value="5">T2 2026</option>
+  </select>
+  <button class="chip" id="btn-fut" onclick="toggleFut()">↗ Futures</button>
+</div>
+
+<!-- FILTRES -->
+
+<div class="controls">
+  <span class="label">Propriété</span>
+  <button class="chip on" id="pf-all" onclick="setProp('all')">Toutes</button>
+  <button class="chip" id="pf-188" onclick="setProp('188')">Sommer Bleu</button>
+  <button class="chip" id="pf-250" onclick="setProp('250')">Blue Hill</button>
+  <button class="chip" id="pf-1540" onclick="setProp('1540')">Lodge Howard</button>
+</div>
+
+<div class="periodbar" id="period-bar">—</div>
+
+<!-- KPIs -->
+
+<div class="main">
+  <div class="grid" id="kpi-fin"></div>
+  <div class="grid" id="kpi-loc"></div>
+
+  <!-- TABS -->
+
+  <div class="btn-grp">
+    <button class="chip on" id="tab-overview" onclick="setTab('overview')">Overview</button>
+    <button class="chip" id="tab-proprietes" onclick="setTab('proprietes')">Propriétés</button>
+    <button class="chip" id="tab-reservations" onclick="setTab('reservations')">Réservations</button>
+    <button class="chip" id="tab-graphique" onclick="setTab('graphique')">Graphique</button>
+  </div>
+
+  <div id="tab-content"></div>
+</div>
+
+<script>
+// ── CONFIG ──────────────────────────────────────────────────────────────────
+const PROXY = "https://guesty-proxy.onrender.com";
+const CID   = "0oatyd9tyetOfhJUt5d7";
+const CSC   = "ScaV_9IC6NUJMoPtzfGFc3TPhGjVemVUW1IlPyGxUfCUtVLdyHvJ6pADCWeA89xQ";
+
+const TPS=0.05,TVQ=0.09975,TH=0.035,GF=0.029,AO=0.03,AN=0.155;
+const CUT=new Date("2025-10-01"), TODAY=new Date("2026-04-05");
+const MFR=["Jan","Fév","Mar","Avr","Mai","Jun","Jul","Aoû","Sep","Oct","Nov","Déc"];
+const PNAMES={"188":"Sommer Bleu","250":"Blue Hill","1540":"Lodge Howard"};
+const PIDS=["188","250","1540"];
+const TYL={airbnb_old:"Airbnb 3%",airbnb_new:"Airbnb 15.5%",direct_guesty:"Direct",cash:"Comptant"};
+const TYC={airbnb_old:"#f59e0b",airbnb_new:"#fb923c",direct_guesty:"#60a5fa",cash:"#a78bfa"};
+
+const QS=[
+  {l:"T1 2025",f:new Date(2025,0,1),t:new Date(2025,2,31)},
+  {l:"T2 2025",f:new Date(2025,3,1),t:new Date(2025,5,30)},
+  {l:"T3 2025",f:new Date(2025,6,1),t:new Date(2025,8,30)},
+  {l:"T4 2025",f:new Date(2025,9,1),t:new Date(2025,11,31)},
+  {l:"T1 2026",f:new Date(2026,0,1),t:new Date(2026,2,31)},
+  {l:"T2 2026",f:new Date(2026,3,1),t:new Date(2026,5,30)},
+];
+
+// ── STATE ────────────────────────────────────────────────────────────────────
+let allRes = [];
+let liveConnected = false;
+let periodMode = "TJ";
+let useCustomQ = false;
+let customQIdx = 4;
+let propFilter = "all";
+let showFuture = false;
+let activeTab = "overview";
+
+// ── FINANCIAL HELPERS ────────────────────────────────────────────────────────
+function det(p,s,ci){
+  const pl=(p||"").toLowerCase(),sl=(s||"").toLowerCase();
+  if(pl==="airbnb"||pl.includes("airbnb")) return ci<CUT?"airbnb_old":"airbnb_new";
+  if(sl==="cash"||sl==="comptant") return "cash";
+  return "direct_guesty";
+}
+function calcFin(type,gross){
+  let hf=0,tps=0,tvq=0,th=0,gf=0;
+  if(type==="airbnb_old"){hf=gross*AO;tps=gross*TPS;tvq=gross*TVQ;}
+  if(type==="airbnb_new"){hf=gross*AN;tps=gross*TPS;tvq=gross*TVQ;}
+  if(type==="direct_guesty"){tps=gross*TPS;tvq=gross*TVQ;th=gross*TH;gf=gross*GF;}
+  const net=gross-hf-tps-tvq-th-gf;
+  const r=v=>Math.round(v*100)/100;
+  return{hf:r(hf),tps:r(tps),tvq:r(tvq),th:r(th),gf:r(gf),net:r(net)};
+}
+const CAD=n=>new Intl.NumberFormat("fr-CA",{style:"currency",currency:"CAD",maximumFractionDigits:0}).format(n||0);
+const CAD2=n=>new Intl.NumberFormat("fr-CA",{style:"currency",currency:"CAD",maximumFractionDigits:2}).format(n||0);
+const DT=d=>d instanceof Date&&!isNaN(d)?d.toLocaleDateString("fr-CA",{day:"2-digit",month:"short",year:"numeric"}):"—";
+
+// ── PERIOD ───────────────────────────────────────────────────────────────────
+function getQ(){
+  if(useCustomQ) return QS[customQIdx];
+  const t=TODAY,y=t.getFullYear(),m=t.getMonth(),d=t.getDate(),q=Math.floor(m/3);
+  if(periodMode==="MC") return{l:MFR[m]+" "+y,f:new Date(y,m,1),t:new Date(y,m+1,0)};
+  if(periodMode==="MJ") return{l:MFR[m]+" "+y+" (ce jour)",f:new Date(y,m,1),t:new Date(y,m,d)};
+  if(periodMode==="TC") return{l:"T"+(q+1)+" "+y,f:new Date(y,q*3,1),t:new Date(y,q*3+3,0)};
+  return{l:"T"+(q+1)+" "+y+" (ce jour)",f:new Date(y,q*3,1),t:new Date(y,m,d)};
+}
+
+// ── FILTER ───────────────────────────────────────────────────────────────────
+function getFiltered(){
+  const Q=getQ();
+  return allRes.filter(r=>{
+    if(propFilter!=="all"&&r.pid!==propFilter) return false;
+    if(showFuture) return r.future;
+    return r.ci>=Q.f&&r.ci<=Q.t;
+  });
+}
+function agg(list){
+  return{
+    gross:list.reduce((s,r)=>s+r.gross,0),
+    net:list.reduce((s,r)=>s+r.net,0),
+    tps:list.reduce((s,r)=>s+r.tps,0),
+    tvq:list.reduce((s,r)=>s+r.tvq,0),
+    th:list.reduce((s,r)=>s+r.th,0),
+    hf:list.reduce((s,r)=>s+r.hf,0),
+    gf:list.reduce((s,r)=>s+r.gf,0),
+    nights:list.reduce((s,r)=>s+r.nights,0),
+    count:list.length
+  };
+}
+
+// ── DEMO DATA ────────────────────────────────────────────────────────────────
+function rnd(s){const x=Math.sin(s)*10000;return x-Math.floor(x);}
+function genDemo(){
+  const res=[];let id=1;
+  PIDS.forEach((pid,pi)=>{
+    for(let m=0;m<18;m++){
+      const base=new Date(2025,m,1);
+      if(base>new Date("2026-06-30")) continue;
+      const cnt=Math.floor(rnd(pi*100+m)*3)+1;
+      for(let r=0;r<cnt;r++){
+        const ci=new Date(2025,m,Math.floor(rnd(pi*1000+m*10+r)*24)+1);
+        if(ci>new Date("2026-06-30")) continue;
+        const nights=Math.floor(rnd(pi*500+m*7+r)*5)+2;
+        const co=new Date(ci); co.setDate(co.getDate()+nights);
+        const gross=Math.round((150+rnd(pi*200+m*3+r)*300)*nights*100)/100;
+        const lead=Math.floor(rnd(pi*300+m*13+r)*60)+1;
+        const bk=new Date(ci); bk.setDate(bk.getDate()-lead);
+        const pls=["airbnb","airbnb","manual","website"];
+        const pl=pls[Math.floor(rnd(pi*400+m*17+r)*4)];
+        const type=det(pl,"manual",ci);
+        const f=calcFin(type,gross);
+        res.push({id:"D"+(id++),pid,name:PNAMES[pid],ci,co,bk,nights,gross,pl,type,...f,lead,future:ci>TODAY});
+      }
+    }
+  });
+  return res;
+}
+
+// ── GUESTY API ───────────────────────────────────────────────────────────────
+async function connect(){
+  showErr(""); showInfo("⏳ Connexion... 15-30 sec si serveur en veille.");
+  document.getElementById("btn-connect").textContent="Connexion...";
+  try{
+    const tr=await fetch(PROXY+"/token",{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({clientId:CID,clientSecret:CSC})
+    });
+    if(!tr.ok) throw new Error("Token "+tr.status);
+    const tj=await tr.json();
+    const tok=tj.access_token;
+    if(!tok) throw new Error("Pas de token: "+JSON.stringify(tj).slice(0,100));
+
+    const filters=JSON.stringify([
+      {operator:"$gte",field:"checkInDateLocalized",value:"2025-01-01"},
+      {operator:"$lte",field:"checkInDateLocalized",value:"2026-12-31"},
+      {operator:"$in",field:"status",value:["confirmed","reserved"]}
+    ]);
+    const fields="_id confirmationCode checkInDateLocalized checkOutDateLocalized createdAt integration source money.fareAccommodation money.hostPayout listingId listing.nickname";
+
+    let raw=[],skip=0;
+    while(true){
+      const params=new URLSearchParams({fields,filters,limit:100,skip});
+      const rr=await fetch(PROXY+"/reservations?"+params,{headers:{Authorization:"Bearer "+tok}});
+      if(!rr.ok) throw new Error("Réservations "+rr.status);
+      const rj=await rr.json();
+      const rs=rj.results||rj.data||[];
+      raw=[...raw,...rs];
+      if(rs.length<100) break;
+      skip+=100;
+    }
+
+    allRes=raw.map((r,i)=>{
+      const ci=new Date(r.checkInDateLocalized),co=new Date(r.checkOutDateLocalized);
+      const nights=Math.max(1,Math.round((co-ci)/86400000));
+      const pl=(r.integration?.platform||"manual").toLowerCase();
+      const sl=(r.source||"manual").toLowerCase();
+      const type=det(pl,sl,ci);
+      const gross=r.money?.fareAccommodation||r.money?.hostPayout||0;
+      const f=calcFin(type,gross);
+      const bk=new Date(r.createdAt||ci);
+      const nick=(r.listing?.nickname||"").toLowerCase();
+      let pid=r.listingId;
+      if(nick.includes("188")||nick.includes("sommer")) pid="188";
+      else if(nick.includes("250")||nick.includes("blue")) pid="250";
+      else if(nick.includes("1540")||nick.includes("lodge")) pid="1540";
+      return{id:r._id||"G"+i,pid,name:r.listing?.nickname||pid,ci,co,bk,nights,gross,pl,sl,type,...f,
+        lead:Math.max(0,Math.round((ci-bk)/86400000)),future:ci>TODAY};
+    });
+
+    liveConnected=true;
+    document.getElementById("mode-badge").className="tag-live";
+    document.getElementById("mode-badge").textContent="● LIVE "+allRes.length+" rés.";
+    document.getElementById("btn-connect").style.display="none";
+    document.getElementById("btn-disconnect").style.display="";
+    showErr(""); showInfo("");
+    render();
+  } catch(e){
+    showErr("Erreur: "+e.message);
+    showInfo("");
+    document.getElementById("btn-connect").textContent="⚡ Connecter Guesty";
+  }
+}
+
+function disconnect(){
+  allRes=genDemo();
+  liveConnected=false;
+  document.getElementById("mode-badge").className="tag-demo";
+  document.getElementById("mode-badge").textContent="DÉMO";
+  document.getElementById("btn-connect").style.display="";
+  document.getElementById("btn-connect").textContent="⚡ Connecter Guesty";
+  document.getElementById("btn-disconnect").style.display="none";
+  render();
+}
+
+function showErr(msg){
+  const el=document.getElementById("err-msg");
+  el.textContent=msg; el.style.display=msg?"":"none";
+}
+function showInfo(msg){
+  const el=document.getElementById("info-msg");
+  el.textContent=msg; el.style.display=msg?"":"none";
+}
+
+// ── UI ACTIONS ───────────────────────────────────────────────────────────────
+function setPeriodMode(m){
+  periodMode=m; useCustomQ=false;
+  ["MC","MJ","TC","TJ"].forEach(x=>document.getElementById("pm-"+x).classList.toggle("on",x===m));
+  render();
+}
+function setCustomQ(v){
+  customQIdx=+v; useCustomQ=true;
+  ["MC","MJ","TC","TJ"].forEach(x=>document.getElementById("pm-"+x).classList.remove("on"));
+  render();
+}
+function setProp(p){
+  propFilter=p;
+  ["all","188","250","1540"].forEach(x=>document.getElementById("pf-"+x).classList.toggle("on",x===p));
+  render();
+}
+function toggleFut(){
+  showFuture=!showFuture;
+  document.getElementById("btn-fut").classList.toggle("on",showFuture);
+  render();
+}
+function setTab(t){
+  activeTab=t;
+  ["overview","proprietes","reservations","graphique"].forEach(x=>document.getElementById("tab-"+x).classList.toggle("on",x===t));
+  render();
+}
+
+// ── RENDER ───────────────────────────────────────────────────────────────────
+function render(){
+  const Q=getQ();
+  const res=getFiltered();
+  const T=agg(res);
+  const props=propFilter==="all"?PIDS:[propFilter];
+  const days=showFuture?90:Math.max(1,Math.round((Q.t-Q.f)/86400000)+1);
+  const occ=props.length>0&&days>0?(T.nights/(days*props.length))*100:0;
+  const ADR=T.nights>0?T.net/T.nights:0;
+  const fut=allRes.filter(r=>r.future&&(propFilter==="all"||r.pid===propFilter));
+
+  // Period bar
+  document.getElementById("period-bar").textContent=Q.l+" · "+DT(Q.f)+" → "+DT(Q.t);
+
+  // KPI financiers
+  document.getElementById("kpi-fin").innerHTML=`
+    <div class="kpi hi"><div class="kpi-label">Revenu net</div><div class="kpi-val" style="color:#4ade80">${CAD(T.net)}</div><div class="kpi-sub">${res.length} rés. · ${T.nights} nuits</div></div>
+    <div class="kpi"><div class="kpi-label">Revenu brut</div><div class="kpi-val">${CAD(T.gross)}</div><div class="kpi-sub">Avant déductions</div></div>
+    <div class="kpi"><div class="kpi-label">Frais plateforme</div><div class="kpi-val" style="color:#f59e0b">${CAD(T.hf)}</div><div class="kpi-sub">Airbnb 3% ou 15.5%</div></div>
+    <div class="kpi warn"><div class="kpi-label">TPS collectée</div><div class="kpi-val" style="color:#f87171">${CAD(T.tps)}</div><div class="kpi-sub">À remettre</div></div>
+    <div class="kpi warn"><div class="kpi-label">TVQ collectée</div><div class="kpi-val" style="color:#f87171">${CAD(T.tvq)}</div><div class="kpi-sub">À remettre</div></div>
+    <div class="kpi warn"><div class="kpi-label">Taxe héberg.</div><div class="kpi-val" style="color:#fb923c">${CAD(T.th)}</div><div class="kpi-sub">3.5% QC — Direct</div></div>
+    <div class="kpi"><div class="kpi-label">Frais Guesty</div><div class="kpi-val" style="color:#a78bfa">${CAD(T.gf)}</div><div class="kpi-sub">2.9% — Direct</div></div>
+  `;
+
+  // KPI locatifs
+  document.getElementById("kpi-loc").innerHTML=`
+    <div class="kpi"><div class="kpi-label">Taux occupation</div><div class="kpi-val">${occ.toFixed(1)}%</div><div class="kpi-sub">${T.nights}/${Math.round(days*props.length)} nuits</div></div>
+    <div class="kpi"><div class="kpi-label">ADR net/nuit</div><div class="kpi-val">${CAD2(ADR)}</div><div class="kpi-sub">Net moy. par nuit</div></div>
+    <div class="kpi"><div class="kpi-label">Durée moy.</div><div class="kpi-val">${res.length>0?(T.nights/res.length).toFixed(1):0} nuits</div><div class="kpi-sub">Par réservation</div></div>
+    <div class="kpi"><div class="kpi-label">Futures</div><div class="kpi-val">${fut.length}</div><div class="kpi-sub">${CAD(fut.reduce((s,r)=>s+r.net,0))} prévu</div></div>
+  `;
+
+  // Tab content
+  const el=document.getElementById("tab-content");
+
+  if(activeTab==="overview"){
+    // Par propriété
+    const pstats=PIDS.map(pid=>{
+      const pr=res.filter(r=>r.pid===pid);
+      return{pid,nom:PNAMES[pid],...agg(pr)};
+    }).filter(p=>p.count>0).sort((a,b)=>b.net-a.net);
+    const maxN=Math.max(...pstats.map(p=>p.net),1);
+
+    // Par type
+    const tstats={};
+    Object.keys(TYL).forEach(k=>{tstats[k]={net:0,count:0};});
+    res.forEach(r=>{if(tstats[r.type]){tstats[r.type].net+=r.net;tstats[r.type].count+=1;}});
+
+    el.innerHTML=`
+      <div class="card">
+        <div class="sec">Revenu net par propriété</div>
+        ${pstats.map(p=>`
+          <div class="bar-row">
+            <div class="bar-label"><span style="color:#7aad90">${p.nom}</span><span style="color:#4ade80;font-family:monospace">${CAD(p.net)}</span></div>
+            <div class="bar-track"><div class="bar-fill" style="width:${p.net/maxN*100}%;background:linear-gradient(90deg,#2d6a45,#4ade80)"></div></div>
+          </div>`).join("")}
+        ${!pstats.length?'<div style="color:#3d6b50;font-size:13px">Aucune donnée pour cette période.</div>':""}
+      </div>
+      <div class="card" style="margin-top:10px">
+        <div class="sec">Par type de réservation</div>
+        ${Object.entries(tstats).filter(([,v])=>v.count>0).map(([k,v])=>`
+          <div class="bar-row">
+            <div class="bar-label"><span style="color:#7aad90">${TYL[k]} (${v.count})</span><span style="color:${TYC[k]};font-family:monospace">${CAD(v.net)}</span></div>
+            <div class="bar-track"><div class="bar-fill" style="width:${T.net>0?v.net/T.net*100:0}%;background:${TYC[k]}"></div></div>
+          </div>`).join("")}
+      </div>
+    `;
+  }
+
+  else if(activeTab==="proprietes"){
+    const pstats=PIDS.map(pid=>{
+      const pr=res.filter(r=>r.pid===pid);
+      return{pid,nom:PNAMES[pid],...agg(pr)};
+    }).filter(p=>p.count>0).sort((a,b)=>b.net-a.net);
+    el.innerHTML=`
+      <div class="card" style="overflow-x:auto">
+        <table>
+          <thead><tr>
+            <th>Propriété</th><th>Brut</th><th style="color:#f59e0b">Frais</th>
+            <th style="color:#f87171">TPS</th><th style="color:#f87171">TVQ</th>
+            <th style="color:#fb923c">Héberg.</th><th style="color:#4ade80">Net</th>
+            <th>Rés.</th><th>Nuits</th>
+          </tr></thead>
+          <tbody>
+            ${pstats.map(p=>`<tr>
+              <td style="font-weight:600;text-align:left">${p.nom}</td>
+              <td>${CAD(p.gross)}</td>
+              <td style="color:#f59e0b">${CAD(p.hf)}</td>
+              <td style="color:#f87171">${CAD(p.tps)}</td>
+              <td style="color:#f87171">${CAD(p.tvq)}</td>
+              <td style="color:#fb923c">${p.th>0?CAD(p.th):"—"}</td>
+              <td style="color:#4ade80;font-weight:700">${CAD(p.net)}</td>
+              <td>${p.count}</td><td>${p.nights}</td>
+            </tr>`).join("")}
+            <tr style="background:#0f1c12;font-weight:700">
+              <td style="text-align:left">TOTAL</td>
+              <td>${CAD(T.gross)}</td>
+              <td style="color:#f59e0b">${CAD(T.hf)}</td>
+              <td style="color:#f87171">${CAD(T.tps)}</td>
+              <td style="color:#f87171">${CAD(T.tvq)}</td>
+              <td style="color:#fb923c">${CAD(T.th)}</td>
+              <td style="color:#4ade80">${CAD(T.net)}</td>
+              <td>${res.length}</td><td>${T.nights}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    `;
+  }
+
+  else if(activeTab==="reservations"){
+    const shown=res.slice(0,100);
+    el.innerHTML=`
+      <div class="card">
+        <div class="sec">${res.length} réservations · ${CAD(T.net)}</div>
+        <div style="overflow-x:auto">
+          <table>
+            <thead><tr>
+              <th>Propriété</th><th style="text-align:left">Type</th>
+              <th style="text-align:left">Check-in</th><th>Nuits</th>
+              <th>Brut</th><th style="color:#4ade80">Net</th>
+            </tr></thead>
+            <tbody>
+              ${shown.map(r=>`<tr style="${r.future?"background:#0c1a0e":""}">
+                <td style="text-align:left;max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.name||PNAMES[r.pid]||r.pid}</td>
+                <td style="text-align:left"><span class="badge" style="background:${TYC[r.type]}22;color:${TYC[r.type]};border:1px solid ${TYC[r.type]}44">${TYL[r.type]}</span></td>
+                <td style="text-align:left;white-space:nowrap">${DT(r.ci)}</td>
+                <td>${r.nights}</td>
+                <td>${CAD2(r.gross)}</td>
+                <td style="color:#4ade80;font-weight:700">${CAD2(r.net)}</td>
+              </tr>`).join("")}
+            </tbody>
+          </table>
+          ${res.length>100?`<div style="text-align:center;padding:8px;color:#3d6b50;font-size:12px">+${res.length-100} autres</div>`:""}
+        </div>
+      </div>
+    `;
+  }
+
+  else if(activeTab==="graphique"){
+    // Graphique mensuel simple en barres CSS
+    const year=2026;
+    const monthly=[];
+    for(let m=0;m<12;m++){
+      const mr=allRes.filter(r=>r.ci.getFullYear()===year&&r.ci.getMonth()===m&&(propFilter==="all"||r.pid===propFilter));
+      monthly.push({m:MFR[m],net:mr.reduce((s,r)=>s+r.net,0),count:mr.length});
+    }
+    const maxVal=Math.max(...monthly.map(m=>m.net),1);
+    el.innerHTML=`
+      <div class="card">
+        <div class="sec">Revenu net mensuel ${year}</div>
+        <div style="display:flex;align-items:flex-end;gap:4px;height:160px;padding-bottom:20px;position:relative">
+          ${monthly.map(m=>{
+            const h=Math.round(m.net/maxVal*130);
+            return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px">
+              <div style="font-size:9px;color:#4ade80;font-family:monospace">${m.net>0?CAD(m.net).replace("$","").trim():""}</div>
+              <div style="width:100%;height:${h}px;background:linear-gradient(180deg,#4ade80,#2d6a45);border-radius:3px 3px 0 0;min-height:${m.net>0?2:0}px"></div>
+              <div style="font-size:9px;color:#3d6b50">${m.m}</div>
+            </div>`;
+          }).join("")}
+        </div>
+        <div class="sec" style="margin-top:14px">Réservations par mois ${year}</div>
+        <div style="display:flex;align-items:flex-end;gap:4px;height:80px;padding-bottom:20px">
+          ${monthly.map(m=>{
+            const maxC=Math.max(...monthly.map(x=>x.count),1);
+            const h=Math.round(m.count/maxC*55);
+            return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px">
+              <div style="font-size:9px;color:#60a5fa">${m.count>0?m.count:""}</div>
+              <div style="width:100%;height:${h}px;background:#60a5fa;border-radius:3px 3px 0 0;min-height:${m.count>0?2:0}px"></div>
+              <div style="font-size:9px;color:#3d6b50">${m.m}</div>
+            </div>`;
+          }).join("")}
+        </div>
+      </div>
+    `;
+  }
+}
+
+// ── INIT ─────────────────────────────────────────────────────────────────────
+allRes=genDemo();
+render();
+</script>
+
+</body>
+</html>
