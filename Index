@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard Revenus Locatifs — Finalta Capital</title>
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script src="https://unpkg.com/recharts@2.12.0/umd/Recharts.js"></script>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#07100a;color:#dff0e6;font-family:'Helvetica Neue',Arial,sans-serif;min-height:100vh}
+  input,select{background:#0a1510;border:1px solid #1f3325;border-radius:7px;color:#dff0e6;padding:8px 12px;font-size:14px;outline:none;width:100%}
+  button{cursor:pointer;font-family:inherit}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+
+const PROXY = “https://guesty-proxy.onrender.com”;
+const CLIENT_ID = “0oatyd9tyetOfhJUt5d7”;
+const CLIENT_SECRET = “ScaV_9IC6NUJMoPtzfGFc3TPhGjVemVUW1IlPyGxUfCUtVLdyHvJ6pADCWeA89xQ”;
+
+const TPS=0.05,TVQ=0.09975,TAXE_HEBERG=0.035,GUESTY_FEE=0.029;
+const AIRBNB_OLD=0.03,AIRBNB_NEW=0.155;
+const CUTOFF=new Date(“2025-10-01”),TODAY=new Date(“2026-04-05”);
+
+function detectType(platform,source,checkInDate){
+const p=(platform||””).toLowerCase(),s=(source||””).toLowerCase();
+const d=checkInDate instanceof Date?checkInDate:new Date(checkInDate);
+if(p===“airbnb”||p.includes(“airbnb”)) return d<CUTOFF?“airbnb_old”:“airbnb_new”;
+if(s===“cash”||s===“comptant”||s===“manual_cash”) return “cash”;
+return “direct_guesty”;
+}
+
+function calcFin(type,gross){
+let hostFee=0,tps=0,tvq=0,taxHeberg=0,guestyFee=0;
+if(type===“airbnb_old”){hostFee=gross*AIRBNB_OLD;tps=gross*TPS;tvq=gross*TVQ;}
+if(type===“airbnb_new”){hostFee=gross*AIRBNB_NEW;tps=gross*TPS;tvq=gross*TVQ;}
+if(type===“direct_guesty”){tps=gross*TPS;tvq=gross*TVQ;taxHeberg=gross*TAXE_HEBERG;guestyFee=gross*GUESTY_FEE;}
+const net=gross-hostFee-tps-tvq-taxHeberg-guestyFee;
+const r=v=>Math.round(v*100)/100;
+return{hostFee:r(hostFee),tps:r(tps),tvq:r(tvq),taxHeberg:r(taxHeberg),guestyFee:r(guestyFee),net:r(net)};
+}
+
+const PROP_NOTES={“188”:“Sommer Bleu”,“250”:“Blue Hill”,“1540”:“Lodge Howard”};
+const TYPE_SHORT={airbnb_old:“Airbnb 3%”,airbnb_new:“Airbnb 15.5%”,direct_guesty:“Direct”,cash:“Comptant”};
+const TYPE_COLOR={airbnb_old:”#f59e0b”,airbnb_new:”#fb923c”,direct_guesty:”#60a5fa”,cash:”#a78bfa”};
+const MONTHS_FR=[“Jan”,“Fév”,“Mar”,“Avr”,“Mai”,“Jun”,“Jul”,“Aoû”,“Sep”,“Oct”,“Nov”,“Déc”];
+
+const CAD=n=>new Intl.NumberFormat(“fr-CA”,{style:“currency”,currency:“CAD”,maximumFractionDigits:0}).format(n||0);
+const CAD2=n=>new Intl.NumberFormat(“fr-CA”,{style:“currency”,currency:“CAD”,maximumFractionDigits:2}).format(n||0);
+const DT=d=>d instanceof Date&&!isNaN(d)?d.toLocaleDateString(“fr-CA”,{day:“2-digit”,month:“short”,year:“numeric”}):”—”;
+const ISODate=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+
+const C={bg:”#07100a”,surface:”#0d1810”,border:”#162318”,border2:”#1f3325”,
+green:”#4ade80”,greenDim:”#2d6a45”,text:”#dff0e6”,textMid:”#7aad90”,
+textDim:”#3d6b50”,amber:”#f59e0b”,orange:”#fb923c”,blue:”#60a5fa”,purple:”#a78bfa”,red:”#f87171”};
+
+const chip=(on,col)=>({
+background:on?(col?`${col}22`:”#1a3a22”):“transparent”,
+border:`1px solid ${on?(col||C.greenDim):C.border2}`,
+borderRadius:20,padding:“6px 14px”,fontSize:13,
+color:on?(col||C.green):C.textMid,cursor:“pointer”,
+transition:“all .12s”,whiteSpace:“nowrap”
+});
+const card={background:C.surface,border:`1px solid ${C.border}`,borderRadius:13,padding:“16px 20px”};
+const sec={fontSize:10,letterSpacing:“0.15em”,textTransform:“uppercase”,color:C.textDim,fontFamily:“monospace”,marginBottom:10};
+const th={padding:“7px 10px”,color:C.textDim,fontSize:11,textTransform:“uppercase”,fontFamily:“monospace”,borderBottom:`1px solid ${C.border}`,textAlign:“left”,whiteSpace:“nowrap”};
+const td={padding:“8px 10px”,borderBottom:“1px solid #0f1c12”,fontSize:13,color:C.text};
+const tdr={padding:“8px 10px”,borderBottom:“1px solid #0f1c12”,fontSize:13,textAlign:“right”,fontFamily:“monospace”};
+
+// Fetch réservations via proxy Render
+async function fetchReservations(){
+// Token
+const tokR=await fetch(`${PROXY}/token`,{
+method:“POST”,
+headers:{“Content-Type”:“application/json”},
+body:JSON.stringify({clientId:CLIENT_ID,clientSecret:CLIENT_SECRET})
+});
+if(!tokR.ok) throw new Error(`Token ${tokR.status}`);
+const tokJ=await tokR.json();
+const token=tokJ.access_token;
+if(!token) throw new Error(“Pas de token: “+JSON.stringify(tokJ));
+
+// Réservations
+const filters=JSON.stringify([
+{operator:”$gte”,field:“checkInDateLocalized”,value:“2025-01-01”},
+{operator:”$lte”,field:“checkInDateLocalized”,value:“2026-12-31”},
+{operator:”$in”,field:“status”,value:[“confirmed”,“reserved”]}
+]);
+const fields=”_id confirmationCode checkInDateLocalized checkOutDateLocalized createdAt integration source money.fareAccommodation money.hostPayout listingId listing.nickname”;
+
+let all=[],skip=0;
+while(true){
+const params=new URLSearchParams({fields,filters,limit:100,skip,sort:“checkInDateLocalized”});
+const r=await fetch(`${PROXY}/reservations?${params}`,{headers:{Authorization:`Bearer ${token}`}});
+if(!r.ok) throw new Error(`Réservations ${r.status}`);
+const j=await r.json();
+const results=j.results||j.data||[];
+all=[…all,…results];
+if(results.length<100) break;
+skip+=100;
+}
+return all;
+}
+
+function mapRes(raw){
+return raw.map((r,i)=>{
+const ci=new Date(r.checkInDateLocalized);
+const co=new Date(r.checkOutDateLocalized);
+const nights=Math.max(1,Math.round((co-ci)/86400000));
+const platform=(r.integration?.platform||“manual”).toLowerCase();
+const source=(r.source||“manual”).toLowerCase();
+const type=detectType(platform,source,ci);
+const gross=r.money?.fareAccommodation||r.money?.hostPayout||0;
+const fin=calcFin(type,gross);
+const bk=new Date(r.createdAt||ci);
+const lead=Math.max(0,Math.round((ci-bk)/86400000));
+// Mapper les listing IDs aux noms de propriétés
+const nick=(r.listing?.nickname||””).toLowerCase();
+let propId=r.listingId;
+if(nick.includes(“188”)||nick.includes(“sommer”)||nick.includes(“bleu”)) propId=“188”;
+else if(nick.includes(“250”)||nick.includes(“blue hill”)) propId=“250”;
+else if(nick.includes(“1540”)||nick.includes(“lodge”)||nick.includes(“howard”)) propId=“1540”;
+return{id:r._id||`G${i}`,propId,listingName:r.listing?.nickname||r.listingId,
+checkIn:ci,checkOut:co,bookingDate:bk,nights,gross,platform,source,type,…fin,
+adr:Math.round((fin.net/nights)*100)/100,leadTime:lead,future:ci>TODAY,
+confirmationCode:r.confirmationCode};
+});
+}
+
+// Données démo
+function rnd(s){const x=Math.sin(s)*10000;return x-Math.floor(x);}
+function genDemo(){
+const props=[{id:“188”},{id:“250”},{id:“1540”}];
+const res=[]; let id=1;
+const plats=[“airbnb”,“airbnb”,“manual”,“website”];
+const srcs=[“airbnb”,“airbnb”,“manual”,“cash”];
+props.forEach((prop,pi)=>{
+for(let m=0;m<18;m++){
+const base=new Date(2025,m,1);
+if(base>new Date(“2026-06-30”)) continue;
+const count=Math.floor(rnd(pi*100+m)*3)+1;
+for(let r=0;r<count;r++){
+const day=Math.floor(rnd(pi*1000+m*10+r)*24)+1;
+const ci=new Date(base.getFullYear(),base.getMonth(),day);
+if(ci>new Date(“2026-06-30”)) continue;
+const nights=Math.floor(rnd(pi*500+m*7+r)*5)+2;
+const co=new Date(ci); co.setDate(co.getDate()+nights);
+const gross=Math.round((150+rnd(pi*200+m*3+r)*300)*nights*100)/100;
+const lead=Math.floor(rnd(pi*300+m*13+r)*60)+1;
+const bk=new Date(ci); bk.setDate(bk.getDate()-lead);
+const plat=plats[Math.floor(rnd(pi*400+m*17+r)*plats.length)];
+const src=srcs[Math.floor(rnd(pi*600+m*11+r)*srcs.length)];
+const type=detectType(plat,src,ci);
+const fin=calcFin(type,gross);
+res.push({id:`D${id++}`,propId:prop.id,listingName:PROP_NOTES[prop.id],
+checkIn:ci,checkOut:co,bookingDate:bk,nights,gross,platform:plat,source:src,type,…fin,
+adr:Math.round((fin.net/nights)*100)/100,leadTime:lead,future:ci>TODAY});
+}
+}
+});
+return res;
+}
+const DEMO_RES=genDemo();
+
+const QUARTERS=[
+{label:“T1 2025”,from:new Date(2025,0,1),to:new Date(2025,2,31)},
+{label:“T2 2025”,from:new Date(2025,3,1),to:new Date(2025,5,30)},
+{label:“T3 2025”,from:new Date(2025,6,1),to:new Date(2025,8,30)},
+{label:“T4 2025”,from:new Date(2025,9,1),to:new Date(2025,11,31)},
+{label:“T1 2026”,from:new Date(2026,0,1),to:new Date(2026,2,31)},
+{label:“T2 2026”,from:new Date(2026,3,1),to:new Date(2026,5,30)},
+];
+
+function getPeriod(mode){
+const t=TODAY,y=t.getFullYear(),m=t.getMonth(),d=t.getDate();
+const q=Math.floor(m/3);
+if(mode===“mois_complet”) return{label:`${MONTHS_FR[m]} ${y}`,from:new Date(y,m,1),to:new Date(y,m+1,0)};
+if(mode===“mois_ce_jour”) return{label:`${MONTHS_FR[m]} ${y} (à ce jour)`,from:new Date(y,m,1),to:new Date(y,m,d)};
+if(mode===“trim_complet”) return{label:`T${q+1} ${y}`,from:new Date(y,q*3,1),to:new Date(y,q*3+3,0)};
+if(mode===“trim_ce_jour”) return{label:`T${q+1} ${y} (à ce jour)`,from:new Date(y,q*3,1),to:new Date(y,m,d)};
+return QUARTERS[mode]||QUARTERS[4];
+}
+
+const {useState,useMemo,useCallback}=React;
+const {LineChart,Line,BarChart,Bar,XAxis,YAxis,Tooltip,ResponsiveContainer,CartesianGrid,Legend}=Recharts;
+
+function KPI({label,value,sub,hi,warn,delta}){
+const color=hi?C.green:warn?C.amber:C.text;
+const dc=delta>0?C.green:delta<0?C.red:C.textDim;
+return(
+<div style={{background:hi?“linear-gradient(135deg,#122a1a,#0a1c10)”:C.surface,border:`1px solid ${hi?C.greenDim:warn?"#5a3a10":C.border}`,borderRadius:11,padding:“14px 16px”}}>
+<div style={{fontSize:10,letterSpacing:“0.14em”,textTransform:“uppercase”,color:C.textDim,fontFamily:“monospace”}}>{label}</div>
+<div style={{fontSize:22,fontWeight:700,color,fontFamily:“Georgia,serif”,margin:“4px 0 2px”}}>{value}</div>
+<div style={{display:“flex”,justifyContent:“space-between”}}>
+{sub&&<div style={{fontSize:11,color:C.textDim}}>{sub}</div>}
+{delta!==undefined&&<div style={{fontSize:11,color:dc,fontFamily:“monospace”}}>{delta>0?”+”:””}{delta.toFixed(1)}%</div>}
+</div>
+</div>
+);
+}
+
+function Bar2({label,value,pct,color}){
+return(
+<div style={{marginBottom:9}}>
+<div style={{display:“flex”,justifyContent:“space-between”,marginBottom:3}}>
+<span style={{fontSize:12,color:C.textMid,maxWidth:“60%”,overflow:“hidden”,textOverflow:“ellipsis”,whiteSpace:“nowrap”}}>{label}</span>
+<span style={{fontSize:12,color:color||C.green,fontFamily:“monospace”}}>{CAD(value)}</span>
+</div>
+<div style={{background:”#131f16”,borderRadius:3,height:5}}>
+<div style={{height:“100%”,width:`${Math.min(pct||0,100)}%`,background:color||`linear-gradient(90deg,${C.greenDim},${C.green})`,borderRadius:3}}/>
+</div>
+</div>
+);
+}
+
+function Badge({type}){
+return <span style={{fontSize:10,background:`${TYPE_COLOR[type]}22`,color:TYPE_COLOR[type],border:`1px solid ${TYPE_COLOR[type]}44`,borderRadius:4,padding:“2px 7px”,fontFamily:“monospace”}}>{TYPE_SHORT[type]}</span>;
+}
+
+function ChartTip({active,payload,label}){
+if(!active||!payload?.length) return null;
+return(
+<div style={{background:”#0d1810”,border:`1px solid ${C.border2}`,borderRadius:8,padding:“10px 14px”,fontSize:12}}>
+<div style={{color:C.textMid,marginBottom:6}}>{label}</div>
+{payload.map((p,i)=><div key={i} style={{color:p.color,fontFamily:“monospace”}}>{p.name}: {CAD(p.value)}</div>)}
+</div>
+);
+}
+
+function App(){
+const [mode,setMode]=useState(“trim_ce_jour”);
+const [useQ,setUseQ]=useState(false);
+const [qIdx,setQIdx]=useState(4);
+const [liveRes,setLiveRes]=useState(null);
+const [status,setStatus]=useState(“idle”);
+const [err,setErr]=useState(””);
+const [tab,setTab]=useState(“overview”);
+const [propFilter,setPropFilter]=useState(“all”);
+const [typeFilters,setTF]=useState([]);
+const [showFuture,setFuture]=useState(false);
+const [compareMode,setCompare]=useState(false);
+const [chartYear,setChartYear]=useState(2026);
+
+const Q=useMemo(()=>useQ?QUARTERS[qIdx]:getPeriod(mode),[mode,qIdx,useQ]);
+
+const prevQ=useMemo(()=>{
+if(useQ) return QUARTERS[qIdx-1]||null;
+const t=TODAY,m=t.getMonth(),y=t.getFullYear(),q=Math.floor(m/3);
+if(mode===“mois_complet”||mode===“mois_ce_jour”){
+const pm=m===0?11:m-1,py=m===0?y-1:y;
+return{label:`${MONTHS_FR[pm]} ${py}`,from:new Date(py,pm,1),to:new Date(py,pm+1,0)};
+}
+const pq=q===0?3:q-1,py=q===0?y-1:y;
+return{label:`T${pq+1} ${py}`,from:new Date(py,pq*3,1),to:new Date(py,pq*3+3,0)};
+},[mode,qIdx,useQ]);
+
+const baseRes=useMemo(()=>liveRes||DEMO_RES,[liveRes]);
+const isDemo=!liveRes;
+
+const filterFn=useCallback((list,period)=>{
+if(!period) return [];
+return list.filter(r=>{
+if(propFilter!==“all”&&r.propId!==propFilter) return false;
+if(typeFilters.length&&!typeFilters.includes(r.type)) return false;
+if(showFuture) return r.future;
+return r.checkIn>=period.from&&r.checkIn<=period.to;
+});
+},[propFilter,typeFilters,showFuture]);
+
+const res=useMemo(()=>filterFn(baseRes,Q),[baseRes,Q,filterFn]);
+const prevRes=useMemo(()=>filterFn(baseRes,prevQ),[baseRes,prevQ,filterFn]);
+
+const agg=list=>({
+gross:list.reduce((s,r)=>s+r.gross,0),net:list.reduce((s,r)=>s+r.net,0),
+tps:list.reduce((s,r)=>s+r.tps,0),tvq:list.reduce((s,r)=>s+r.tvq,0),
+heberg:list.reduce((s,r)=>s+r.taxHeberg,0),fees:list.reduce((s,r)=>s+r.hostFee,0),
+guesty:list.reduce((s,r)=>s+r.guestyFee,0),nights:list.reduce((s,r)=>s+r.nights,0),count:list.length
+});
+const T=useMemo(()=>agg(res),[res]);
+const Tp=useMemo(()=>agg(prevRes),[prevRes]);
+const delta=(c,p)=>p>0?((c-p)/p)*100:0;
+
+const daysInPer=useMemo(()=>showFuture?90:Math.max(1,Math.round((Q.to-Q.from)/86400000)+1),[Q,showFuture]);
+const props=propFilter===“all”?[“188”,“250”,“1540”]:[propFilter];
+const occupancy=props.length>0&&daysInPer>0?(T.nights/(daysInPer*props.length))*100:0;
+const ADR=T.nights>0?T.net/T.nights:0;
+const futureRes=baseRes.filter(r=>r.future&&(propFilter===“all”||r.propId===propFilter));
+
+const propStats=useMemo(()=>{
+const m={};
+[“188”,“250”,“1540”].forEach(id=>{m[id]={id,nom:PROP_NOTES[id],net:0,gross:0,tps:0,tvq:0,heberg:0,fees:0,nights:0,count:0};});
+res.forEach(r=>{
+if(!m[r.propId]) return;
+m[r.propId].net+=r.net;m[r.propId].gross+=r.gross;m[r.propId].tps+=r.tps;
+m[r.propId].tvq+=r.tvq;m[r.propId].heberg+=r.taxHeberg;m[r.propId].fees+=r.hostFee;
+m[r.propId].nights+=r.nights;m[r.propId].count+=1;
+});
+return Object.values(m).filter(p=>p.count>0).sort((a,b)=>b.net-a.net);
+},[res]);
+
+const typeStats=useMemo(()=>{
+const m={};
+Object.keys(TYPE_SHORT).forEach(k=>{m[k]={net:0,count:0};});
+res.forEach(r=>{m[r.type]&&(m[r.type].net+=r.net,m[r.type].count+=1);});
+return m;
+},[res]);
+
+const monthlyData=useMemo(()=>{
+const m={};
+for(let i=0;i<12;i++) m[i]={month:MONTHS_FR[i],net:0,gross:0,count:0};
+baseRes.filter(r=>r.checkIn.getFullYear()===chartYear&&(propFilter===“all”||r.propId===propFilter))
+.forEach(r=>{const mo=r.checkIn.getMonth();m[mo].net+=r.net;m[mo].gross+=r.gross;m[mo].count+=1;});
+return Object.values(m).map(v=>({…v,net:Math.round(v.net),gross:Math.round(v.gross)}));
+},[baseRes,chartYear,propFilter]);
+
+const maxNet=Math.max(…propStats.map(p=>p.net),1);
+
+const connect=async()=>{
+setStatus(“connecting”);setErr(””);
+try{
+const raw=await fetchReservations();
+setLiveRes(mapRes(raw));
+setStatus(“ok”);
+}catch(e){setErr(e.message);setStatus(“error”);}
+};
+
+const PERIOD_MODES=[
+{id:“mois_complet”,label:“Mois complet”},
+{id:“mois_ce_jour”,label:“Mois à ce jour”},
+{id:“trim_complet”,label:“Trimestre complet”},
+{id:“trim_ce_jour”,label:“Trimestre à ce jour”},
+];
+
+return(
+<div style={{background:C.bg,minHeight:“100vh”,color:C.text,fontFamily:”‘Helvetica Neue’,Arial,sans-serif”,paddingBottom:60}}>
+
+```
+  {/* HEADER */}
+  <div style={{background:"linear-gradient(180deg,#0d1f12,#07100a)",borderBottom:`1px solid ${C.border}`,padding:"18px 20px 14px"}}>
+    <div style={{fontSize:10,letterSpacing:"0.2em",textTransform:"uppercase",color:C.textDim,fontFamily:"monospace",marginBottom:3}}>Finalta Capital × Guesty</div>
+    <div style={{fontSize:20,fontWeight:700,fontFamily:"Georgia,serif",marginBottom:12}}>Tableau de bord — Revenus locatifs</div>
+    <div style={{display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}}>
+      {isDemo&&<span style={{background:"#2a1a0a",border:"1px solid #5a3a10",borderRadius:20,padding:"3px 10px",fontSize:10,color:C.amber,fontFamily:"monospace"}}>DÉMO</span>}
+      {!isDemo&&<span style={{background:"#0a2a14",border:`1px solid ${C.greenDim}`,borderRadius:20,padding:"3px 10px",fontSize:10,color:C.green,fontFamily:"monospace"}}>● LIVE</span>}
+      <button style={chip(false,status==="ok"?C.green:undefined)} onClick={connect} disabled={status==="connecting"}>
+        {status==="connecting"?"⏳ Connexion...":status==="ok"?`✓ ${liveRes.length} rés. importées`:"⚡ Connecter Guesty"}
+      </button>
+      {status==="ok"&&<button style={chip(false,"#5a2a2a")} onClick={()=>{setLiveRes(null);setStatus("idle");}}>Déconnecter</button>}
+    </div>
+    {status==="connecting"&&<div style={{marginTop:8,fontSize:11,color:C.textMid}}>⏳ Connexion au proxy... 15-30 secondes si serveur en veille.</div>}
+    {err&&<div style={{marginTop:8,fontSize:12,color:C.red}}>⚠ {err}</div>}
+  </div>
+
+  {/* CONTROLS */}
+  <div style={{background:"#0a150c",borderBottom:`1px solid ${C.border}`,padding:"10px 20px",display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}}>
+    <span style={{fontSize:10,letterSpacing:"0.14em",textTransform:"uppercase",color:C.textDim,fontFamily:"monospace"}}>Période</span>
+    {PERIOD_MODES.map(pm=>(
+      <button key={pm.id} style={chip(!useQ&&mode===pm.id)} onClick={()=>{setMode(pm.id);setUseQ(false);setFuture(false);}}>
+        {pm.label}
+      </button>
+    ))}
+    <select style={{background:C.surface,border:`1px solid ${useQ?C.greenDim:C.border2}`,borderRadius:7,color:C.text,padding:"6px 10px",fontSize:13,cursor:"pointer",outline:"none"}}
+      value={qIdx} onChange={e=>{setQIdx(+e.target.value);setUseQ(true);setFuture(false);}}>
+      {QUARTERS.map((q,i)=><option key={i} value={i}>{q.label}</option>)}
+    </select>
+    <button style={chip(showFuture)} onClick={()=>setFuture(v=>!v)}>↗ Futures</button>
+    <button style={chip(compareMode)} onClick={()=>setCompare(v=>!v)}>⇆ Comparer</button>
+
+    <div style={{width:1,height:20,background:C.border2}}/>
+    <span style={{fontSize:10,letterSpacing:"0.14em",textTransform:"uppercase",color:C.textDim,fontFamily:"monospace"}}>Propriété</span>
+    {[{id:"all",nom:"Toutes"},...["188","250","1540"].map(id=>({id,nom:PROP_NOTES[id]}))].map(p=>(
+      <button key={p.id} style={chip(propFilter===p.id)} onClick={()=>setPropFilter(p.id)}>{p.nom}</button>
+    ))}
+
+    <div style={{width:1,height:20,background:C.border2}}/>
+    {Object.entries(TYPE_SHORT).map(([k,v])=>(
+      <button key={k} style={chip(typeFilters.includes(k),TYPE_COLOR[k])} onClick={()=>setTF(f=>f.includes(k)?f.filter(x=>x!==k):[...f,k])}>{v}</button>
+    ))}
+  </div>
+
+  {/* Indicateur période */}
+  <div style={{padding:"8px 20px",fontSize:11,color:C.textDim,fontFamily:"monospace",background:"#080f0a",borderBottom:`1px solid ${C.border}`}}>
+    📅 <span style={{color:C.textMid}}>{Q.label}</span> · {DT(Q.from)} → {DT(Q.to)}
+    {compareMode&&prevQ&&<span style={{marginLeft:16}}>vs <span style={{color:C.textMid}}>{prevQ.label}</span></span>}
+  </div>
+
+  {/* Comparaison */}
+  {compareMode&&prevQ&&T.net>0&&(
+    <div style={{background:"#0c1a10",borderBottom:`1px solid ${C.border}`,padding:"10px 20px",display:"flex",gap:20,flexWrap:"wrap",alignItems:"center"}}>
+      <span style={{fontSize:11,color:C.textDim,fontFamily:"monospace"}}>⇆ {prevQ.label} → {Q.label}</span>
+      {[["Net",Tp.net,T.net],["Brut",Tp.gross,T.gross],["Rés.",Tp.count,T.count],["Nuits",Tp.nights,T.nights]].map(([l,p,c])=>{
+        const d=p>0?((c-p)/p)*100:0;
+        return(
+          <div key={l} style={{display:"flex",alignItems:"center",gap:6}}>
+            <span style={{fontSize:12,color:C.textMid}}>{l}</span>
+            <span style={{fontSize:12,fontFamily:"monospace",color:d>0?C.green:d<0?C.red:C.textDim,background:d>0?"#0a2a14":d<0?"#2a0a0a":"transparent",borderRadius:4,padding:"1px 6px"}}>
+              {d>0?"+":""}{d.toFixed(1)}%
+            </span>
+          </div>
+        );
+      })}
+    </div>
+  )}
+
+  <div style={{padding:"14px 20px",display:"flex",flexDirection:"column",gap:12}}>
+
+    {/* KPI financiers */}
+    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(140px,1fr))",gap:8}}>
+      <KPI label="Revenu net" value={CAD(T.net)} sub={`${res.length} rés. · ${T.nights} nuits`} hi delta={compareMode?delta(T.net,Tp.net):undefined}/>
+      <KPI label="Revenu brut" value={CAD(T.gross)} sub="Avant déductions" delta={compareMode?delta(T.gross,Tp.gross):undefined}/>
+      <KPI label="Frais plateforme" value={CAD(T.fees)} sub="Airbnb 3% ou 15.5%"/>
+      <KPI label="TPS collectée" value={CAD(T.tps)} sub="À remettre" warn/>
+      <KPI label="TVQ collectée" value={CAD(T.tvq)} sub="À remettre" warn/>
+      <KPI label="Taxe héberg." value={CAD(T.heberg)} sub="3.5% QC — Direct" warn/>
+      <KPI label="Frais Guesty" value={CAD(T.guesty)} sub="2.9% — Direct"/>
+    </div>
+
+    {/* KPI locatifs */}
+    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(140px,1fr))",gap:8}}>
+      <KPI label="Taux d'occupation" value={`${occupancy.toFixed(1)}%`} sub={`${T.nights}/${Math.round(daysInPer*props.length)} nuits`}/>
+      <KPI label="ADR net / nuit" value={CAD2(ADR)} sub="Net moy. par nuit"/>
+      <KPI label="Durée moy." value={`${res.length>0?(T.nights/res.length).toFixed(1):0} nuits`} sub="Par réservation"/>
+      <KPI label="Lead time" value={`${Math.round(res.filter(r=>!r.future).reduce((s,r,_,a)=>s+r.leadTime/a.length,0))}j`} sub="Résa → arrivée"/>
+      <KPI label="Futures" value={futureRes.length} sub={`${CAD(futureRes.reduce((s,r)=>s+r.net,0))} prévu`}/>
+    </div>
+
+    {/* TABS */}
+    <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
+      {["overview","graphiques","propriétés","réservations"].map(t=>(
+        <button key={t} style={{...chip(tab===t),borderRadius:7}} onClick={()=>setTab(t)}>
+          {t.charAt(0).toUpperCase()+t.slice(1)}
+        </button>
+      ))}
+    </div>
+
+    {/* OVERVIEW */}
+    {tab==="overview"&&(
+      <div style={{display:"flex",flexDirection:"column",gap:12}}>
+        <div style={card}>
+          <div style={sec}>Revenu net par propriété</div>
+          {propStats.map(p=><Bar2 key={p.id} label={p.nom} value={p.net} pct={(p.net/maxNet)*100}/>)}
+          {propStats.length===0&&<div style={{color:C.textDim,fontSize:13}}>Aucune donnée pour cette période.</div>}
+        </div>
+        <div style={card}>
+          <div style={sec}>Par type de réservation</div>
+          {Object.entries(typeStats).filter(([,v])=>v.count>0).map(([k,v])=>(
+            <Bar2 key={k} label={`${TYPE_SHORT[k]} — ${v.count} rés.`} value={v.net} pct={T.net>0?(v.net/T.net)*100:0} color={TYPE_COLOR[k]}/>
+          ))}
+        </div>
+      </div>
+    )}
+
+    {/* GRAPHIQUES */}
+    {tab==="graphiques"&&(
+      <div style={{display:"flex",flexDirection:"column",gap:12}}>
+        <div style={{display:"flex",gap:8,marginBottom:4}}>
+          {[2025,2026].map(y=><button key={y} style={chip(chartYear===y)} onClick={()=>setChartYear(y)}>{y}</button>)}
+        </div>
+        <div style={card}>
+          <div style={sec}>Revenu net vs brut — mensuel {chartYear}</div>
+          <ResponsiveContainer width="100%" height={220}>
+            <LineChart data={monthlyData} margin={{top:5,right:10,left:0,bottom:5}}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#162318"/>
+              <XAxis dataKey="month" tick={{fill:C.textDim,fontSize:10}} axisLine={{stroke:C.border}}/>
+              <YAxis tick={{fill:C.textDim,fontSize:10}} tickFormatter={v=>CAD(v)} width={75} axisLine={{stroke:C.border}}/>
+              <Tooltip content={<ChartTip/>}/>
+              <Legend wrapperStyle={{fontSize:12}}/>
+              <Line type="monotone" dataKey="gross" name="Brut" stroke={C.textMid} strokeWidth={1.5} dot={false}/>
+              <Line type="monotone" dataKey="net" name="Net" stroke={C.green} strokeWidth={2.5} dot={{r:3,fill:C.green}}/>
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+        <div style={card}>
+          <div style={sec}>Réservations par mois {chartYear}</div>
+          <ResponsiveContainer width="100%" height={160}>
+            <BarChart data={monthlyData} margin={{top:5,right:10,left:0,bottom:5}}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#162318"/>
+              <XAxis dataKey="month" tick={{fill:C.textDim,fontSize:10}} axisLine={{stroke:C.border}}/>
+              <YAxis tick={{fill:C.textDim,fontSize:10}} axisLine={{stroke:C.border}}/>
+              <Tooltip content={<ChartTip/>}/>
+              <Bar dataKey="count" name="Réservations" fill={C.blue} radius={[3,3,0,0]}/>
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+    )}
+
+    {/* PROPRIÉTÉS */}
+    {tab==="propriétés"&&(
+      <div style={card}>
+        <div style={{overflowX:"auto"}}>
+          <table style={{width:"100%",borderCollapse:"collapse"}}>
+            <thead><tr>
+              {["Propriété","Brut","Frais","TPS","TVQ","Héberg.","Net","Rés.","Nuits","ADR"].map(h=>(
+                <th key={h} style={{...th,textAlign:h==="Propriété"?"left":"right"}}>{h}</th>
+              ))}
+            </tr></thead>
+            <tbody>
+              {propStats.map(p=>(
+                <tr key={p.id}>
+                  <td style={td}><span style={{fontWeight:600}}>{p.nom}</span></td>
+                  <td style={tdr}>{CAD(p.gross)}</td>
+                  <td style={{...tdr,color:C.amber}}>{CAD(p.fees)}</td>
+                  <td style={{...tdr,color:C.red}}>{CAD(p.tps)}</td>
+                  <td style={{...tdr,color:C.red}}>{CAD(p.tvq)}</td>
+                  <td style={{...tdr,color:C.orange}}>{p.heberg>0?CAD(p.heberg):"—"}</td>
+                  <td style={{...tdr,color:C.green,fontWeight:700}}>{CAD(p.net)}</td>
+                  <td style={tdr}>{p.count}</td>
+                  <td style={tdr}>{p.nights}</td>
+                  <td style={{...tdr,color:C.textMid}}>{CAD2(p.nights>0?p.net/p.nights:0)}</td>
+                </tr>
+              ))}
+              <tr style={{background:"#0f1c12"}}>
+                <td style={{...td,fontWeight:700}}>TOTAL</td>
+                <td style={{...tdr,fontWeight:700}}>{CAD(T.gross)}</td>
+                <td style={{...tdr,color:C.amber,fontWeight:700}}>{CAD(T.fees)}</td>
+                <td style={{...tdr,color:C.red,fontWeight:700}}>{CAD(T.tps)}</td>
+                <td style={{...tdr,color:C.red,fontWeight:700}}>{CAD(T.tvq)}</td>
+                <td style={{...tdr,color:C.orange,fontWeight:700}}>{CAD(T.heberg)}</td>
+                <td style={{...tdr,color:C.green,fontWeight:700}}>{CAD(T.net)}</td>
+                <td style={{...tdr,fontWeight:700}}>{res.length}</td>
+                <td style={{...tdr,fontWeight:700}}>{T.nights}</td>
+                <td style={{...tdr,color:C.textMid,fontWeight:700}}>{CAD2(ADR)}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    )}
+
+    {/* RÉSERVATIONS */}
+    {tab==="réservations"&&(
+      <div style={card}>
+        <div style={{marginBottom:10,fontSize:12,color:C.textDim}}>{res.length} réservations · Net {CAD(T.net)}</div>
+        <div style={{overflowX:"auto"}}>
+          <table style={{width:"100%",borderCollapse:"collapse"}}>
+            <thead><tr>
+              {["Propriété","Type","Check-in","Check-out","Nuits","Brut","Frais","Net"].map(h=>(
+                <th key={h} style={{...th,textAlign:["Propriété","Type","Check-in","Check-out"].includes(h)?"left":"right"}}>{h}</th>
+              ))}
+            </tr></thead>
+            <tbody>
+              {res.slice(0,100).map(r=>(
+                <tr key={r.id} style={{background:r.future?"#0c1a0e":"transparent"}}>
+                  <td style={{...td,maxWidth:130,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{r.listingName||PROP_NOTES[r.propId]||r.propId}</td>
+                  <td style={td}><Badge type={r.type}/></td>
+                  <td style={{...td,fontFamily:"monospace",fontSize:11}}>{DT(r.checkIn)}</td>
+                  <td style={{...td,fontFamily:"monospace",fontSize:11}}>{DT(r.checkOut)}</td>
+                  <td style={tdr}>{r.nights}</td>
+                  <td style={tdr}>{CAD2(r.gross)}</td>
+                  <td style={{...tdr,color:C.amber}}>{r.hostFee>0?CAD2(r.hostFee):"—"}</td>
+                  <td style={{...tdr,color:C.green,fontWeight:700}}>{CAD2(r.net)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {res.length>100&&<div style={{textAlign:"center",padding:10,color:C.textDim,fontSize:12}}>+{res.length-100} autres</div>}
+        </div>
+      </div>
+    )}
+
+  </div>
+</div>
+```
+
+);
+}
+
+ReactDOM.createRoot(document.getElementById(“root”)).render(<App/>);
+</script>
+
+</body>
+</html>
