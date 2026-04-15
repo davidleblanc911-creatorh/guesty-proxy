@@ -1,5 +1,4 @@
 <!DOCTYPE html>
-
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
@@ -52,7 +51,6 @@ select{background:#0d1810;border:1px solid #1f3325;border-radius:7px;color:#dff0
 <body>
 
 <div class="header">
-  <div class="eyebrow">Finalta Capital × Guesty</div>
   <div class="title">Revenus locatifs</div>
   <div class="btn-grp" id="header-btns">
     <span class="tag-demo" id="mode-badge">DÉMO</span>
@@ -64,7 +62,6 @@ select{background:#0d1810;border:1px solid #1f3325;border-radius:7px;color:#dff0
 </div>
 
 <!-- PÉRIODE -->
-
 <div class="controls">
   <span class="label">Période</span>
   <button class="chip" id="pm-MC" onclick="setPeriodMode('MC')">Mois complet</button>
@@ -82,8 +79,25 @@ select{background:#0d1810;border:1px solid #1f3325;border-radius:7px;color:#dff0
   <button class="chip" id="btn-fut" onclick="toggleFut()">↗ Futures</button>
 </div>
 
-<!-- FILTRES -->
+<!-- DATES PERSONNALISÉES -->
+<div class="controls" style="background:#0b1a0d;border-bottom:1px solid #162318">
+  <span class="label">Dates précises</span>
+  <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+    <span style="font-size:11px;color:#3d6b50">Du</span>
+    <input type="date" id="date-from" style="background:#0d1810;border:1px solid #1f3325;border-radius:7px;color:#dff0e6;padding:5px 8px;font-size:12px;outline:none;width:140px"
+      onchange="setCustomDate()">
+    <span style="font-size:11px;color:#3d6b50">au</span>
+    <input type="date" id="date-to" style="background:#0d1810;border:1px solid #1f3325;border-radius:7px;color:#dff0e6;padding:5px 8px;font-size:12px;outline:none;width:140px"
+      onchange="setCustomDate()">
+    <button class="chip on" id="btn-update" onclick="applyCustomDate()" 
+      style="background:#1a3a22;border-color:#2d6a45;color:#4ade80;font-weight:600;padding:5px 18px">
+      ↻ Update
+    </button>
+    <button class="chip" onclick="clearCustomDate()" style="font-size:11px">✕ Effacer</button>
+  </div>
+</div>
 
+<!-- FILTRES -->
 <div class="controls">
   <span class="label">Propriété</span>
   <button class="chip on" id="pf-all" onclick="setProp('all')">Toutes</button>
@@ -95,13 +109,11 @@ select{background:#0d1810;border:1px solid #1f3325;border-radius:7px;color:#dff0
 <div class="periodbar" id="period-bar">—</div>
 
 <!-- KPIs -->
-
 <div class="main">
   <div class="grid" id="kpi-fin"></div>
   <div class="grid" id="kpi-loc"></div>
 
   <!-- TABS -->
-
   <div class="btn-grp">
     <button class="chip on" id="tab-overview" onclick="setTab('overview')">Overview</button>
     <button class="chip" id="tab-proprietes" onclick="setTab('proprietes')">Propriétés</button>
@@ -115,8 +127,8 @@ select{background:#0d1810;border:1px solid #1f3325;border-radius:7px;color:#dff0
 <script>
 // ── CONFIG ──────────────────────────────────────────────────────────────────
 const PROXY = "https://guesty-proxy.onrender.com";
-const CID   = "0oatyd9tyetOfhJUt5d7";
-const CSC   = "ScaV_9IC6NUJMoPtzfGFc3TPhGjVemVUW1IlPyGxUfCUtVLdyHvJ6pADCWeA89xQ";
+const CID   = "0oau4brqocX5ytCT85d7";
+const CSC   = "ZCzj9z-eBr2exm8bY-Wr4UB2H3RLxYU_3TaTRkfQKJ7_sLqmEE_q9drxcRV9OOvz";
 
 const TPS=0.05,TVQ=0.09975,TH=0.035,GF=0.029,AO=0.03,AN=0.155;
 const CUT=new Date("2025-10-01"), TODAY=new Date("2026-04-05");
@@ -141,6 +153,9 @@ let liveConnected = false;
 let periodMode = "TJ";
 let useCustomQ = false;
 let customQIdx = 4;
+let useCustomDate = false;
+let customDateFrom = null;
+let customDateTo = null;
 let propFilter = "all";
 let showFuture = false;
 let activeTab = "overview";
@@ -167,6 +182,11 @@ const DT=d=>d instanceof Date&&!isNaN(d)?d.toLocaleDateString("fr-CA",{day:"2-di
 
 // ── PERIOD ───────────────────────────────────────────────────────────────────
 function getQ(){
+  if(useCustomDate&&customDateFrom&&customDateTo){
+    const df=customDateFrom.toLocaleDateString("fr-CA",{day:"2-digit",month:"short",year:"numeric"});
+    const dt=customDateTo.toLocaleDateString("fr-CA",{day:"2-digit",month:"short",year:"numeric"});
+    return{l:df+" → "+dt, f:customDateFrom, t:customDateTo};
+  }
   if(useCustomQ) return QS[customQIdx];
   const t=TODAY,y=t.getFullYear(),m=t.getMonth(),d=t.getDate(),q=Math.floor(m/3);
   if(periodMode==="MC") return{l:MFR[m]+" "+y,f:new Date(y,m,1),t:new Date(y,m+1,0)};
@@ -314,14 +334,36 @@ function showInfo(msg){
 
 // ── UI ACTIONS ───────────────────────────────────────────────────────────────
 function setPeriodMode(m){
-  periodMode=m; useCustomQ=false;
+  periodMode=m; useCustomQ=false; useCustomDate=false;
   ["MC","MJ","TC","TJ"].forEach(x=>document.getElementById("pm-"+x).classList.toggle("on",x===m));
   render();
 }
 function setCustomQ(v){
-  customQIdx=+v; useCustomQ=true;
+  customQIdx=+v; useCustomQ=true; useCustomDate=false;
   ["MC","MJ","TC","TJ"].forEach(x=>document.getElementById("pm-"+x).classList.remove("on"));
   render();
+}
+function setCustomDate(){
+  // Auto-appliquer si les deux dates sont remplies
+  const f=document.getElementById("date-from").value;
+  const t=document.getElementById("date-to").value;
+  if(f&&t) applyCustomDate();
+}
+function applyCustomDate(){
+  const f=document.getElementById("date-from").value;
+  const t=document.getElementById("date-to").value;
+  if(!f||!t){alert("Sélectionne les deux dates.");return;}
+  customDateFrom=new Date(f);
+  customDateTo=new Date(t);
+  useCustomDate=true; useCustomQ=false;
+  ["MC","MJ","TC","TJ"].forEach(x=>document.getElementById("pm-"+x).classList.remove("on"));
+  render();
+}
+function clearCustomDate(){
+  useCustomDate=false;
+  document.getElementById("date-from").value="";
+  document.getElementById("date-to").value="";
+  setPeriodMode("TJ");
 }
 function setProp(p){
   propFilter=p;
@@ -522,6 +564,5 @@ function render(){
 allRes=genDemo();
 render();
 </script>
-
 </body>
 </html>
