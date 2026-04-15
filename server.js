@@ -9,17 +9,14 @@ app.use(express.static(path.join(__dirname)));
 app.post("/token", async (req, res) => {
   try {
     const body = new URLSearchParams({
-      client_id: "0oau4brqocX5ytCT85d7",
-      client_secret: "ZCzj9z-eBr2exm8bY-Wr4UB2H3RLxYU_3TaTRkfQKJ7_sLqmEE_q9drxcRV9OOvz",
+      client_id: process.env.GUESTY_CLIENT_ID,
+      client_secret: process.env.GUESTY_CLIENT_SECRET,
       grant_type: "client_credentials",
       scope: "open-api"
     });
     const r = await fetch("https://open-api.guesty.com/oauth2/token", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
-        "Accept": "application/json"
-      },
+      headers: { "Content-Type": "application/x-www-form-urlencoded", "Accept": "application/json" },
       body: body.toString()
     });
     const data = await r.json();
@@ -33,9 +30,7 @@ app.get("/reservations", async (req, res) => {
   try {
     const token = req.headers.authorization;
     const url = "https://open-api.guesty.com/v1/reservations?" + new URLSearchParams(req.query);
-    const r = await fetch(url, {
-      headers: { Authorization: token, Accept: "application/json" }
-    });
+    const r = await fetch(url, { headers: { Authorization: token, Accept: "application/json" } });
     const data = await r.json();
     res.json(data);
   } catch (e) {
