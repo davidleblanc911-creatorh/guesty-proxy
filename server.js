@@ -8,10 +8,9 @@ app.use(express.static(path.join(__dirname)));
 
 app.post("/token", async (req, res) => {
   try {
-    const { clientId, clientSecret } = req.body;
     const body = new URLSearchParams({
-      client_id: clientId,
-      client_secret: clientSecret,
+      client_id: "0oau4brqocX5ytCT85d7",
+      client_secret: "ZCzj9z-eBr2exm8bY-Wr4UB2H3RLxYU_3TaTRkfQKJ7_sLqmEE_q9drxcRV9OOvz",
       grant_type: "client_credentials",
       scope: "open-api"
     });
