@@ -1,0 +1,734 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Dashboard — Finalta Capital</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#07100a;color:#dff0e6;font-family:-apple-system,Helvetica,Arial,sans-serif;font-size:14px}
+.header{background:linear-gradient(180deg,#0d1f12,#07100a);border-bottom:1px solid #162318;padding:16px 18px 12px}
+.eyebrow{font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:#3d6b50;font-family:monospace;margin-bottom:3px}
+.title{font-size:20px;font-weight:700;margin-bottom:12px}
+.controls{background:#0a150c;border-bottom:1px solid #162318;padding:8px 18px;display:flex;gap:7px;flex-wrap:wrap;align-items:center}
+.label{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:#3d6b50;font-family:monospace}
+.chip{background:transparent;border:1px solid #1f3325;border-radius:20px;padding:5px 12px;font-size:12px;color:#7aad90;cursor:pointer;white-space:nowrap;font-family:inherit}
+.chip.on{background:#1a3a22;border-color:#2d6a45;color:#4ade80}
+.chip-amber.on{background:#f59e0b22;border-color:#f59e0b;color:#f59e0b}
+.chip-blue.on{background:#60a5fa22;border-color:#60a5fa;color:#60a5fa}
+.chip-orange.on{background:#fb923c22;border-color:#fb923c;color:#fb923c}
+.chip-purple.on{background:#a78bfa22;border-color:#a78bfa;color:#a78bfa}
+.periodbar{padding:6px 18px;font-size:11px;color:#3d6b50;font-family:monospace;background:#080f0a;border-bottom:1px solid #162318}
+.main{padding:12px 18px;display:flex;flex-direction:column;gap:10px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:7px}
+.kpi{border-radius:11px;padding:12px 15px;border:1px solid #162318;background:#0d1810}
+.kpi.hi{background:linear-gradient(135deg,#122a1a,#0a1c10);border-color:#2d6a45}
+.kpi.warn{border-color:#5a3a10}
+.kpi-label{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:#3d6b50;font-family:monospace}
+.kpi-val{font-size:20px;font-weight:700;margin:3px 0 2px}
+.kpi-sub{font-size:11px;color:#3d6b50}
+.card{background:#0d1810;border:1px solid #162318;border-radius:12px;padding:14px 18px}
+.sec{font-size:10px;letter-spacing:.15em;text-transform:uppercase;color:#3d6b50;font-family:monospace;margin-bottom:8px}
+.bar-row{margin-bottom:8px}
+.bar-label{display:flex;justify-content:space-between;margin-bottom:3px;font-size:12px}
+.bar-track{background:#131f16;border-radius:3px;height:4px}
+.bar-fill{height:100%;border-radius:3px}
+table{width:100%;border-collapse:collapse}
+th{padding:7px 8px;color:#3d6b50;font-size:10px;text-transform:uppercase;font-family:monospace;border-bottom:1px solid #162318;text-align:right;white-space:nowrap}
+th:first-child{text-align:left}
+td{padding:7px 8px;border-bottom:1px solid #0f1c12;font-size:12px;text-align:right;font-family:monospace}
+td:first-child{text-align:left;font-family:-apple-system,Helvetica,sans-serif}
+.badge{font-size:10px;border-radius:4px;padding:2px 6px;font-family:monospace}
+.btn-grp{display:flex;gap:5px;flex-wrap:wrap}
+select{background:#0d1810;border:1px solid #1f3325;border-radius:7px;color:#dff0e6;padding:5px 8px;font-size:12px;outline:none;font-family:inherit}
+.err{color:#f87171;font-size:12px;margin-top:6px}
+.info{color:#7aad90;font-size:11px;margin-top:6px}
+.tag-demo{background:#2a1a0a;border:1px solid #5a3a10;border-radius:20px;padding:3px 10px;font-size:10px;color:#f59e0b;font-family:monospace}
+.tag-live{background:#0a2a14;border:1px solid #2d6a45;border-radius:20px;padding:3px 10px;font-size:10px;color:#4ade80;font-family:monospace}
+.divider{width:1px;height:18px;background:#1f3325;flex-shrink:0}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="title">Revenus locatifs</div>
+  <div class="btn-grp" id="header-btns">
+    <span class="tag-demo" id="mode-badge">DÉMO</span>
+    <button class="chip" id="btn-connect" onclick="toggleConnectForm()">⚡ Connecter Guesty</button>
+    <button class="chip" id="btn-disconnect" style="display:none;border-color:#5a2a2a;color:#f87171" onclick="disconnect()">Déconnecter</button>
+  </div>
+  <div id="connect-form" style="display:none;margin-top:10px;background:#0a1a0c;border:1px solid #2d6a45;border-radius:10px;padding:12px 16px">
+    <div style="font-size:11px;color:#4ade80;font-weight:600;margin-bottom:10px">Connexion Guesty — entrez vos clés</div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
+      <div style="flex:1;min-width:180px">
+        <div style="font-size:10px;color:#3d6b50;font-family:monospace;margin-bottom:4px;letter-spacing:.1em">CLIENT ID</div>
+        <input id="manual-cid" type="text" placeholder="Client ID" style="background:#0d1810;border:1px solid #2d6a45;border-radius:6px;color:#dff0e6;padding:6px 10px;font-size:12px;outline:none;width:100%;font-family:monospace">
+      </div>
+      <div style="flex:2;min-width:250px">
+        <div style="font-size:10px;color:#3d6b50;font-family:monospace;margin-bottom:4px;letter-spacing:.1em">CLIENT SECRET</div>
+        <input id="manual-csec" type="password" placeholder="••••••••••••••••" style="background:#0d1810;border:1px solid #2d6a45;border-radius:6px;color:#dff0e6;padding:6px 10px;font-size:12px;outline:none;width:100%;font-family:monospace">
+      </div>
+      <button onclick="connectWithKeys()" style="background:#1a3a22;border:1px solid #4ade80;border-radius:8px;color:#4ade80;padding:7px 18px;font-size:13px;cursor:pointer;font-weight:700;white-space:nowrap">Se connecter</button>
+    </div>
+  </div>
+  <div class="err" id="err-msg" style="display:none"></div>
+  <div class="info" id="info-msg" style="display:none"></div>
+</div>
+
+<!-- PÉRIODE -->
+<div class="controls">
+  <span class="label">Période</span>
+  <button class="chip" id="pm-MC" onclick="setPeriodMode('MC')">Mois complet</button>
+  <button class="chip" id="pm-MJ" onclick="setPeriodMode('MJ')">Mois ce jour</button>
+  <button class="chip" id="pm-TC" onclick="setPeriodMode('TC')">Trim. complet</button>
+  <button class="chip on" id="pm-TJ" onclick="setPeriodMode('TJ')">Trim. ce jour</button>
+  <select id="q-select" onchange="setCustomQ(this.value)">
+    <option value="0">T1 2025</option>
+    <option value="1">T2 2025</option>
+    <option value="2">T3 2025</option>
+    <option value="3">T4 2025</option>
+    <option value="4" selected>T1 2026</option>
+    <option value="5">T2 2026</option>
+  </select>
+  <button class="chip" id="btn-fut" onclick="toggleFut()">↗ Futures</button>
+</div>
+
+<!-- DATES PERSONNALISÉES -->
+<div class="controls" style="background:#0b1a0d;border-bottom:1px solid #162318">
+  <span class="label">Dates précises</span>
+  <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+    <span style="font-size:11px;color:#3d6b50">Du</span>
+    <input type="date" id="date-from" style="background:#0d1810;border:1px solid #1f3325;border-radius:7px;color:#dff0e6;padding:5px 8px;font-size:12px;outline:none;width:140px"
+      onchange="setCustomDate()">
+    <span style="font-size:11px;color:#3d6b50">au</span>
+    <input type="date" id="date-to" style="background:#0d1810;border:1px solid #1f3325;border-radius:7px;color:#dff0e6;padding:5px 8px;font-size:12px;outline:none;width:140px"
+      onchange="setCustomDate()">
+    <button class="chip on" id="btn-update" onclick="applyCustomDate()" 
+      style="background:#1a3a22;border-color:#2d6a45;color:#4ade80;font-weight:600;padding:5px 18px">
+      ↻ Update
+    </button>
+    <button class="chip" onclick="clearCustomDate()" style="font-size:11px">✕ Effacer</button>
+  </div>
+</div>
+
+<!-- FILTRES -->
+<div class="controls">
+  <span class="label">Propriété</span>
+  <button class="chip on" id="pf-all" onclick="setProp('all')">Toutes</button>
+  <button class="chip" id="pf-188" onclick="setProp('188')">Sommer Bleu</button>
+  <button class="chip" id="pf-250" onclick="setProp('250')">Blue Hill</button>
+  <button class="chip" id="pf-1540" onclick="setProp('1540')">Lodge Howard</button>
+</div>
+
+<div class="periodbar" id="period-bar">—</div>
+
+<!-- KPIs -->
+<div class="main">
+  <div class="grid" id="kpi-fin"></div>
+  <div class="grid" id="kpi-loc"></div>
+
+  <!-- TABS -->
+  <div class="btn-grp">
+    <button class="chip on" id="tab-overview" onclick="setTab('overview')">Overview</button>
+    <button class="chip" id="tab-proprietes" onclick="setTab('proprietes')">Propriétés</button>
+    <button class="chip" id="tab-reservations" onclick="setTab('reservations')">Réservations</button>
+    <button class="chip" id="tab-graphique" onclick="setTab('graphique')">Graphique</button>
+    <button class="chip" id="tab-cash" onclick="setTab('cash')" style="border-color:#a78bfa;color:#a78bfa">💵 Cash 2026</button>
+  </div>
+
+  <div id="tab-content"></div>
+</div>
+
+<script>
+// ── CONFIG ──────────────────────────────────────────────────────────────────
+const PROXY = "https://guesty-proxy.onrender.com";
+
+const TPS=0.05,TVQ=0.09975,TH=0.035,GF=0.029,AO=0.03,AN=0.155;
+const CUT=new Date("2025-10-01"), TODAY=new Date("2026-04-05");
+const MFR=["Jan","Fév","Mar","Avr","Mai","Jun","Jul","Aoû","Sep","Oct","Nov","Déc"];
+const PNAMES={"188":"O Sommet Bleu","250":"Blue Hill","1540":"Howard's Lodge"};
+const PIDS=["188","250","1540"];
+const TYL={airbnb_old:"Airbnb 3%",airbnb_new:"Airbnb 15.5%",direct_guesty:"Direct",cash:"Comptant"};
+const TYC={airbnb_old:"#f59e0b",airbnb_new:"#fb923c",direct_guesty:"#60a5fa",cash:"#a78bfa"};
+
+// ── DONNÉES CASH 2026 — Dropbox (dashboard-Chalet-spa-nature) ─────────────────
+// Source: onglet "revenue CASH 2026" — réservations comptant hors Guesty
+const CASH_2026 = [
+  {prop:"1540", nom:"Howard's Lodge",  locataire:"Evelyne Desrochers",  ci:new Date(2026,0,23), co:new Date(2026,0,25), montant:3500, david:1400, statut:"payé",    note:"enveloppe 2850"},
+  {prop:"1540", nom:"Howard's Lodge",  locataire:"Jean-François Tremblay", ci:new Date(2026,3,27), co:new Date(2026,3,29), montant:2900, david:1100, statut:"payé",    note:"enveloppe 2850"},
+  {prop:"188",  nom:"O Sommet Bleu",   locataire:"Marie-Claude Gagnon",  ci:new Date(2026,3,3),  co:new Date(2026,3,5),  montant:1400, david:350,  statut:"payé",    note:"enveloppe 2850"},
+  {prop:"1540", nom:"Howard's Lodge",  locataire:"Robert Côté",          ci:new Date(2026,3,17), co:new Date(2026,3,20), montant:3000, david:1100, statut:"partiel", note:"statut 1000"},
+  {prop:"188",  nom:"O Sommet Bleu",   locataire:"Sophie Lavoie",        ci:new Date(2026,3,30), co:new Date(2026,4,3),  montant:1300, david:300,  statut:"à venir", note:"a venir"},
+];
+
+// Totaux cash
+const CASH_TOTAL_DAVID = CASH_2026.reduce((s,r)=>s+r.david,0);
+const CASH_TOTAL_BRUT  = CASH_2026.reduce((s,r)=>s+r.montant,0);
+
+const QS=[
+  {l:"T1 2025",f:new Date(2025,0,1),t:new Date(2025,2,31)},
+  {l:"T2 2025",f:new Date(2025,3,1),t:new Date(2025,5,30)},
+  {l:"T3 2025",f:new Date(2025,6,1),t:new Date(2025,8,30)},
+  {l:"T4 2025",f:new Date(2025,9,1),t:new Date(2025,11,31)},
+  {l:"T1 2026",f:new Date(2026,0,1),t:new Date(2026,2,31)},
+  {l:"T2 2026",f:new Date(2026,3,1),t:new Date(2026,5,30)},
+];
+
+// ── STATE ────────────────────────────────────────────────────────────────────
+let allRes = [];
+let liveConnected = false;
+let periodMode = "TJ";
+let useCustomQ = false;
+let customQIdx = 4;
+let useCustomDate = false;
+let customDateFrom = null;
+let customDateTo = null;
+let propFilter = "all";
+let showFuture = false;
+let activeTab = "overview";
+
+// ── FINANCIAL HELPERS ────────────────────────────────────────────────────────
+function det(p,s,ci){
+  const pl=(p||"").toLowerCase(),sl=(s||"").toLowerCase();
+  if(pl==="airbnb"||pl.includes("airbnb")) return ci<CUT?"airbnb_old":"airbnb_new";
+  if(sl==="cash"||sl==="comptant") return "cash";
+  return "direct_guesty";
+}
+function calcFin(type,gross){
+  let hf=0,tps=0,tvq=0,th=0,gf=0;
+  if(type==="airbnb_old"){hf=gross*AO;tps=gross*TPS;tvq=gross*TVQ;}
+  if(type==="airbnb_new"){hf=gross*AN;tps=gross*TPS;tvq=gross*TVQ;}
+  if(type==="direct_guesty"){tps=gross*TPS;tvq=gross*TVQ;th=gross*TH;gf=gross*GF;}
+  const net=gross-hf-tps-tvq-th-gf;
+  const r=v=>Math.round(v*100)/100;
+  return{hf:r(hf),tps:r(tps),tvq:r(tvq),th:r(th),gf:r(gf),net:r(net)};
+}
+const CAD=n=>new Intl.NumberFormat("fr-CA",{style:"currency",currency:"CAD",maximumFractionDigits:0}).format(n||0);
+const CAD2=n=>new Intl.NumberFormat("fr-CA",{style:"currency",currency:"CAD",maximumFractionDigits:2}).format(n||0);
+const DT=d=>d instanceof Date&&!isNaN(d)?d.toLocaleDateString("fr-CA",{day:"2-digit",month:"short",year:"numeric"}):"—";
+
+// ── PERIOD ───────────────────────────────────────────────────────────────────
+function getQ(){
+  if(useCustomDate&&customDateFrom&&customDateTo){
+    const df=customDateFrom.toLocaleDateString("fr-CA",{day:"2-digit",month:"short",year:"numeric"});
+    const dt=customDateTo.toLocaleDateString("fr-CA",{day:"2-digit",month:"short",year:"numeric"});
+    return{l:df+" → "+dt, f:customDateFrom, t:customDateTo};
+  }
+  if(useCustomQ) return QS[customQIdx];
+  const t=TODAY,y=t.getFullYear(),m=t.getMonth(),d=t.getDate(),q=Math.floor(m/3);
+  if(periodMode==="MC") return{l:MFR[m]+" "+y,f:new Date(y,m,1),t:new Date(y,m+1,0)};
+  if(periodMode==="MJ") return{l:MFR[m]+" "+y+" (ce jour)",f:new Date(y,m,1),t:new Date(y,m,d)};
+  if(periodMode==="TC") return{l:"T"+(q+1)+" "+y,f:new Date(y,q*3,1),t:new Date(y,q*3+3,0)};
+  return{l:"T"+(q+1)+" "+y+" (ce jour)",f:new Date(y,q*3,1),t:new Date(y,m,d)};
+}
+
+// ── FILTER ───────────────────────────────────────────────────────────────────
+function getFiltered(){
+  const Q=getQ();
+  return allRes.filter(r=>{
+    if(propFilter!=="all"&&r.pid!==propFilter) return false;
+    if(showFuture) return r.future;
+    return r.ci>=Q.f&&r.ci<=Q.t;
+  });
+}
+function agg(list){
+  return{
+    gross:list.reduce((s,r)=>s+r.gross,0),
+    net:list.reduce((s,r)=>s+r.net,0),
+    tps:list.reduce((s,r)=>s+r.tps,0),
+    tvq:list.reduce((s,r)=>s+r.tvq,0),
+    th:list.reduce((s,r)=>s+r.th,0),
+    hf:list.reduce((s,r)=>s+r.hf,0),
+    gf:list.reduce((s,r)=>s+r.gf,0),
+    nights:list.reduce((s,r)=>s+r.nights,0),
+    count:list.length
+  };
+}
+
+// ── DEMO DATA ────────────────────────────────────────────────────────────────
+function rnd(s){const x=Math.sin(s)*10000;return x-Math.floor(x);}
+function genDemo(){
+  const res=[];let id=1;
+  PIDS.forEach((pid,pi)=>{
+    for(let m=0;m<18;m++){
+      const base=new Date(2025,m,1);
+      if(base>new Date("2026-06-30")) continue;
+      const cnt=Math.floor(rnd(pi*100+m)*3)+1;
+      for(let r=0;r<cnt;r++){
+        const ci=new Date(2025,m,Math.floor(rnd(pi*1000+m*10+r)*24)+1);
+        if(ci>new Date("2026-06-30")) continue;
+        const nights=Math.floor(rnd(pi*500+m*7+r)*5)+2;
+        const co=new Date(ci); co.setDate(co.getDate()+nights);
+        const gross=Math.round((150+rnd(pi*200+m*3+r)*300)*nights*100)/100;
+        const lead=Math.floor(rnd(pi*300+m*13+r)*60)+1;
+        const bk=new Date(ci); bk.setDate(bk.getDate()-lead);
+        const pls=["airbnb","airbnb","manual","website"];
+        const pl=pls[Math.floor(rnd(pi*400+m*17+r)*4)];
+        const type=det(pl,"manual",ci);
+        const f=calcFin(type,gross);
+        res.push({id:"D"+(id++),pid,name:PNAMES[pid],ci,co,bk,nights,gross,pl,type,...f,lead,future:ci>TODAY});
+      }
+    }
+  });
+  return res;
+}
+
+// ── GUESTY API ───────────────────────────────────────────────────────────────
+function toggleConnectForm(){
+  const f=document.getElementById("connect-form");
+  f.style.display=f.style.display==="none"?"":"none";
+}
+
+async function connectWithKeys(){
+  const cid=document.getElementById("manual-cid").value.trim();
+  const csec=document.getElementById("manual-csec").value.trim();
+  if(!cid||!csec){showErr("Entrez le Client ID et Client Secret.");return;}
+  showErr(""); showInfo("⏳ Connexion en cours...");
+  await connect(cid,csec);
+}
+
+async function connect(clientId, clientSecret){
+  const cid=clientId||"";
+  const csec=clientSecret||"";
+  if(!cid||!csec){showErr("Clés manquantes.");return;}
+  showErr(""); showInfo("⏳ Connexion... 15-30 sec si serveur en veille.");
+  document.getElementById("btn-connect").textContent="Connexion...";
+  try{
+    const tr=await fetch(PROXY+"/token",{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({clientId:cid,clientSecret:csec})
+    });
+    if(!tr.ok) throw new Error("Token "+tr.status);
+    const tj=await tr.json();
+    const tok=tj.access_token;
+    if(!tok) throw new Error("Pas de token: "+JSON.stringify(tj).slice(0,100));
+
+    const filters=JSON.stringify([
+      {operator:"$gte",field:"checkInDateLocalized",value:"2025-01-01"},
+      {operator:"$lte",field:"checkInDateLocalized",value:"2026-12-31"},
+      {operator:"$in",field:"status",value:["confirmed","reserved"]}
+    ]);
+    const fields="_id confirmationCode checkInDateLocalized checkOutDateLocalized createdAt integration source money.fareAccommodation money.fareAccommodationAdjusted money.fareCleaning money.hostServiceFee money.hostServiceFeeIncTax money.totalTaxes money.hostPayout listingId listing.nickname listing._id";
+
+    let raw=[],skip=0;
+    while(true){
+      const params=new URLSearchParams({fields,filters,limit:100,skip});
+      const rr=await fetch(PROXY+"/reservations?"+params,{headers:{Authorization:"Bearer "+tok}});
+      if(!rr.ok) throw new Error("Réservations "+rr.status);
+      const rj=await rr.json();
+      const rs=rj.results||rj.data||[];
+      raw=[...raw,...rs];
+      if(rs.length<100) break;
+      skip+=100;
+    }
+
+    allRes=raw.map((r,i)=>{
+      const ci=new Date(r.checkInDateLocalized),co=new Date(r.checkOutDateLocalized);
+      const nights=Math.max(1,Math.round((co-ci)/86400000));
+      const pl=(r.integration?.platform||"manual").toLowerCase();
+      const sl=(r.source||"manual").toLowerCase();
+      const type=det(pl,sl,ci);
+
+      // BRUT = fareAccommodation (loyer) + fareCleaning (ménage) — AVANT taxes et frais
+      const fareAccom = r.money?.fareAccommodationAdjusted || r.money?.fareAccommodation || 0;
+      const fareCleaning = r.money?.fareCleaning || 0;
+      const gross = fareAccom + fareCleaning;
+
+      // Frais plateforme Airbnb (hostServiceFee) ou calculé selon le type
+      const platformFee = r.money?.hostServiceFeeIncTax || r.money?.hostServiceFee || 0;
+
+      // Taxes (TPS+TVQ+taxe hébergement) retournées par Guesty
+      const totalTaxes = r.money?.totalTaxes || 0;
+
+      // Net = brut - frais plateforme - taxes
+      const net = Math.round((gross - platformFee - totalTaxes)*100)/100;
+
+      const f={
+        hf: Math.round(platformFee*100)/100,
+        tps: Math.round(gross*TPS*100)/100,
+        tvq: Math.round(gross*TVQ*100)/100,
+        th:  Math.round(gross*TH*100)/100,
+        gf:  0,
+        net: net > 0 ? net : Math.round((gross*(1-TPS-TVQ))*100)/100
+      };
+
+      const bk=new Date(r.createdAt||ci);
+      const nick=(r.listing?.nickname||"").toLowerCase();
+
+      // Mapping propriété par nickname
+      let pid="autre";
+      if(nick.includes("sommet")||nick.includes("sommer")||nick.includes("bleu")||nick.includes("188")) pid="188";
+      else if(nick.includes("blue hill")||nick.includes("250")) pid="250";
+      else if(nick.includes("howard")||nick.includes("lodge")||nick.includes("1540")) pid="1540";
+
+      return{id:r._id||"G"+i,pid,name:r.listing?.nickname||r.listingId,
+        listingId:r.listingId,ci,co,bk,nights,
+        gross:Math.round(gross*100)/100,
+        fareAccom:Math.round(fareAccom*100)/100,
+        fareCleaning:Math.round(fareCleaning*100)/100,
+        pl,sl,type,...f,
+        adr:nights>0?Math.round(f.net/nights*100)/100:0,
+        lead:Math.max(0,Math.round((ci-bk)/86400000)),future:ci>TODAY};
+    }).filter(r=>r.pid!=="autre"); // Exclure les propriétés non mappées
+
+    liveConnected=true;
+    document.getElementById("connect-form").style.display="none";
+    // Afficher les listings non mappés pour debug
+    const nonMappes=raw.filter(r=>{
+      const nick=(r.listing?.nickname||"").toLowerCase();
+      return !nick.includes("sommet")&&!nick.includes("sommer")&&!nick.includes("bleu")&&!nick.includes("188")&&!nick.includes("blue hill")&&!nick.includes("250")&&!nick.includes("howard")&&!nick.includes("lodge")&&!nick.includes("1540");
+    });
+    if(nonMappes.length>0){
+      const noms=[...new Set(nonMappes.map(r=>r.listing?.nickname||r.listingId))];
+      console.log("Listings non mappés:",noms);
+      showInfo("⚠ "+nonMappes.length+" rés. non mappées. Listings: "+noms.join(", "));
+    }
+    document.getElementById("mode-badge").className="tag-live";
+    document.getElementById("mode-badge").textContent="● LIVE "+allRes.length+" rés.";
+    document.getElementById("btn-connect").style.display="none";
+    document.getElementById("btn-disconnect").style.display="";
+    showErr(""); showInfo("");
+    render();
+  } catch(e){
+    showErr("Erreur: "+e.message);
+    showInfo("");
+    document.getElementById("btn-connect").textContent="⚡ Connecter Guesty";
+  }
+}
+
+function disconnect(){
+  allRes=genDemo();
+  liveConnected=false;
+  document.getElementById("mode-badge").className="tag-demo";
+  document.getElementById("mode-badge").textContent="DÉMO";
+  document.getElementById("btn-connect").style.display="";
+  document.getElementById("btn-connect").textContent="⚡ Connecter Guesty";
+  document.getElementById("btn-disconnect").style.display="none";
+  render();
+}
+
+function showErr(msg){
+  const el=document.getElementById("err-msg");
+  el.textContent=msg; el.style.display=msg?"":"none";
+}
+function showInfo(msg){
+  const el=document.getElementById("info-msg");
+  el.textContent=msg; el.style.display=msg?"":"none";
+}
+
+// ── UI ACTIONS ───────────────────────────────────────────────────────────────
+function setPeriodMode(m){
+  periodMode=m; useCustomQ=false; useCustomDate=false;
+  ["MC","MJ","TC","TJ"].forEach(x=>document.getElementById("pm-"+x).classList.toggle("on",x===m));
+  render();
+}
+function setCustomQ(v){
+  customQIdx=+v; useCustomQ=true; useCustomDate=false;
+  ["MC","MJ","TC","TJ"].forEach(x=>document.getElementById("pm-"+x).classList.remove("on"));
+  render();
+}
+function setCustomDate(){
+  // Auto-appliquer si les deux dates sont remplies
+  const f=document.getElementById("date-from").value;
+  const t=document.getElementById("date-to").value;
+  if(f&&t) applyCustomDate();
+}
+function applyCustomDate(){
+  const f=document.getElementById("date-from").value;
+  const t=document.getElementById("date-to").value;
+  if(!f||!t){alert("Sélectionne les deux dates.");return;}
+  customDateFrom=new Date(f);
+  customDateTo=new Date(t);
+  useCustomDate=true; useCustomQ=false;
+  ["MC","MJ","TC","TJ"].forEach(x=>document.getElementById("pm-"+x).classList.remove("on"));
+  render();
+}
+function clearCustomDate(){
+  useCustomDate=false;
+  document.getElementById("date-from").value="";
+  document.getElementById("date-to").value="";
+  setPeriodMode("TJ");
+}
+function setProp(p){
+  propFilter=p;
+  ["all","188","250","1540"].forEach(x=>document.getElementById("pf-"+x).classList.toggle("on",x===p));
+  render();
+}
+function toggleFut(){
+  showFuture=!showFuture;
+  document.getElementById("btn-fut").classList.toggle("on",showFuture);
+  render();
+}
+function setTab(t){
+  activeTab=t;
+  ["overview","proprietes","reservations","graphique","cash"].forEach(x=>{
+    const el=document.getElementById("tab-"+x);
+    if(el) el.classList.toggle("on",x===t);
+  });
+  render();
+}
+
+// ── RENDER ───────────────────────────────────────────────────────────────────
+function render(){
+  const Q=getQ();
+  const res=getFiltered();
+  const T=agg(res);
+  const props=propFilter==="all"?PIDS:[propFilter];
+  const days=showFuture?90:Math.max(1,Math.round((Q.t-Q.f)/86400000)+1);
+  const occ=props.length>0&&days>0?(T.nights/(days*props.length))*100:0;
+  const ADR=T.nights>0?T.net/T.nights:0;
+  const fut=allRes.filter(r=>r.future&&(propFilter==="all"||r.pid===propFilter));
+
+  // Period bar
+  // Cash filtré selon la période et propriété
+  const cashFiltered = CASH_2026.filter(r=>{
+    if(propFilter!=="all"&&r.prop!==propFilter) return false;
+    if(showFuture) return r.ci>TODAY;
+    return r.ci>=Q.f&&r.ci<=Q.t;
+  });
+  const cashBrut = cashFiltered.reduce((s,r)=>s+r.montant,0);
+  const cashDavid = cashFiltered.reduce((s,r)=>s+r.david,0);
+  const cashCommission = cashFiltered.reduce((s,r)=>s+r.commission,0);
+
+  document.getElementById("period-bar").textContent=Q.l+" · "+DT(Q.f)+" → "+DT(Q.t);
+
+  // KPI financiers — Guesty + Cash combinés
+  document.getElementById("kpi-fin").innerHTML=`
+    <div class="kpi hi"><div class="kpi-label">Net total (Guesty+Cash)</div><div class="kpi-val" style="color:#4ade80">${CAD(T.net+cashDavid)}</div><div class="kpi-sub">Guesty ${CAD(T.net)} + Cash ${CAD(cashDavid)}</div></div>
+    <div class="kpi"><div class="kpi-label">Brut Guesty</div><div class="kpi-val">${CAD(T.gross)}</div><div class="kpi-sub">${res.length} réservations</div></div>
+    <div class="kpi" style="border-color:#a78bfa44"><div class="kpi-label">Brut Cash</div><div class="kpi-val" style="color:#a78bfa">${CAD(cashBrut)}</div><div class="kpi-sub">${cashFiltered.length} rés. comptant</div></div>
+    <div class="kpi"><div class="kpi-label">Frais plateforme</div><div class="kpi-val" style="color:#f59e0b">${CAD(T.hf)}</div><div class="kpi-sub">Airbnb 3% ou 15.5%</div></div>
+  `;
+
+  // KPI locatifs
+  document.getElementById("kpi-loc").innerHTML=`
+    <div class="kpi"><div class="kpi-label">Taux occupation</div><div class="kpi-val">${occ.toFixed(1)}%</div><div class="kpi-sub">${T.nights}/${Math.round(days*props.length)} nuits</div></div>
+    <div class="kpi"><div class="kpi-label">ADR net/nuit</div><div class="kpi-val">${CAD2(ADR)}</div><div class="kpi-sub">Net moy. par nuit</div></div>
+    <div class="kpi"><div class="kpi-label">Durée moy.</div><div class="kpi-val">${res.length>0?(T.nights/res.length).toFixed(1):0} nuits</div><div class="kpi-sub">Par réservation</div></div>
+    <div class="kpi"><div class="kpi-label">Futures</div><div class="kpi-val">${fut.length}</div><div class="kpi-sub">${CAD(fut.reduce((s,r)=>s+r.net,0))} prévu</div></div>
+  `;
+
+  // Tab content
+  const el=document.getElementById("tab-content");
+
+  if(activeTab==="overview"){
+    // Par propriété
+    const pstats=PIDS.map(pid=>{
+      const pr=res.filter(r=>r.pid===pid);
+      return{pid,nom:PNAMES[pid],...agg(pr)};
+    }).filter(p=>p.count>0).sort((a,b)=>b.net-a.net);
+    const maxN=Math.max(...pstats.map(p=>p.net),1);
+
+    // Par type
+    const tstats={};
+    Object.keys(TYL).forEach(k=>{tstats[k]={net:0,count:0};});
+    res.forEach(r=>{if(tstats[r.type]){tstats[r.type].net+=r.net;tstats[r.type].count+=1;}});
+
+    el.innerHTML=`
+      <div class="card">
+        <div class="sec">Revenu net par propriété</div>
+        ${pstats.map(p=>`
+          <div class="bar-row">
+            <div class="bar-label"><span style="color:#7aad90">${p.nom}</span><span style="color:#4ade80;font-family:monospace">${CAD(p.net)}</span></div>
+            <div class="bar-track"><div class="bar-fill" style="width:${p.net/maxN*100}%;background:linear-gradient(90deg,#2d6a45,#4ade80)"></div></div>
+          </div>`).join("")}
+        ${!pstats.length?'<div style="color:#3d6b50;font-size:13px">Aucune donnée pour cette période.</div>':""}
+      </div>
+      <div class="card" style="margin-top:10px">
+        <div class="sec">Par type de réservation</div>
+        ${Object.entries(tstats).filter(([,v])=>v.count>0).map(([k,v])=>`
+          <div class="bar-row">
+            <div class="bar-label"><span style="color:#7aad90">${TYL[k]} (${v.count})</span><span style="color:${TYC[k]};font-family:monospace">${CAD(v.net)}</span></div>
+            <div class="bar-track"><div class="bar-fill" style="width:${T.net>0?v.net/T.net*100:0}%;background:${TYC[k]}"></div></div>
+          </div>`).join("")}
+      </div>
+    `;
+  }
+
+  else if(activeTab==="proprietes"){
+    const pstats=PIDS.map(pid=>{
+      const pr=res.filter(r=>r.pid===pid);
+      return{pid,nom:PNAMES[pid],...agg(pr)};
+    }).filter(p=>p.count>0||CASH_2026.some(c=>c.prop===p.pid)).sort((a,b)=>b.net-a.net);
+
+    // Cash par propriété pour la période
+    const cashParProp={};
+    PIDS.forEach(pid=>{
+      const cf=cashFiltered.filter(r=>r.prop===pid);
+      cashParProp[pid]={brut:cf.reduce((s,r)=>s+r.montant,0),david:cf.reduce((s,r)=>s+r.david,0),count:cf.length};
+    });
+
+    el.innerHTML=`
+      <div class="card" style="overflow-x:auto">
+        <table>
+          <thead><tr>
+            <th>Propriété</th><th>Brut Guesty</th><th style="color:#a78bfa">Cash David</th>
+            <th style="color:#4ade80">Total Net</th>
+            <th style="color:#f59e0b">Frais</th>
+            <th style="color:#f87171">TPS</th><th style="color:#f87171">TVQ</th>
+            <th style="color:#fb923c">Héberg.</th>
+            <th>Rés.</th>
+          </tr></thead>
+          <tbody>
+            ${PIDS.map(pid=>{
+              const p=pstats.find(x=>x.pid===pid)||{pid,nom:PNAMES[pid],net:0,gross:0,tps:0,tvq:0,th:0,hf:0,nights:0,count:0};
+              const cp=cashParProp[pid]||{brut:0,david:0,count:0};
+              const total=p.net+cp.david;
+              return `<tr>
+                <td style="font-weight:600;text-align:left">${p.nom}</td>
+                <td>${CAD(p.gross)}</td>
+                <td style="color:#a78bfa">${cp.brut>0?CAD(cp.david):"—"}</td>
+                <td style="color:#4ade80;font-weight:700">${CAD(total)}</td>
+                <td style="color:#f59e0b">${CAD(p.hf)}</td>
+                <td style="color:#f87171">${CAD(p.tps)}</td>
+                <td style="color:#f87171">${CAD(p.tvq)}</td>
+                <td style="color:#fb923c">${p.th>0?CAD(p.th):"—"}</td>
+                <td>${p.count}${cp.count>0?" +"+cp.count+"💵":""}</td>
+              </tr>`;
+            }).join("")}
+            <tr style="background:#0f1c12;font-weight:700">
+              <td style="text-align:left">TOTAL</td>
+              <td>${CAD(T.gross)}</td>
+              <td style="color:#a78bfa">${CAD(cashDavid)}</td>
+              <td style="color:#4ade80">${CAD(T.net+cashDavid)}</td>
+              <td style="color:#f59e0b">${CAD(T.hf)}</td>
+              <td style="color:#f87171">${CAD(T.tps)}</td>
+              <td style="color:#f87171">${CAD(T.tvq)}</td>
+              <td style="color:#fb923c">${CAD(T.th)}</td>
+              <td>${res.length}${cashFiltered.length>0?" +"+cashFiltered.length+"💵":""}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    `;
+  }
+
+  else if(activeTab==="reservations"){
+    const shown=res.slice(0,100);
+    el.innerHTML=`
+      <div class="card">
+        <div class="sec">${res.length} réservations · ${CAD(T.net)}</div>
+        <div style="overflow-x:auto">
+          <table>
+            <thead><tr>
+              <th>Propriété</th><th style="text-align:left">Type</th>
+              <th style="text-align:left">Check-in</th><th>Nuits</th>
+              <th>Brut</th><th style="color:#4ade80">Net</th>
+            </tr></thead>
+            <tbody>
+              ${shown.map(r=>`<tr style="${r.future?"background:#0c1a0e":""}">
+                <td style="text-align:left;max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.name||PNAMES[r.pid]||r.pid}</td>
+                <td style="text-align:left"><span class="badge" style="background:${TYC[r.type]}22;color:${TYC[r.type]};border:1px solid ${TYC[r.type]}44">${TYL[r.type]}</span></td>
+                <td style="text-align:left;white-space:nowrap">${DT(r.ci)}</td>
+                <td>${r.nights}</td>
+                <td>${CAD2(r.gross)}</td>
+                <td style="color:#4ade80;font-weight:700">${CAD2(r.net)}</td>
+              </tr>`).join("")}
+            </tbody>
+          </table>
+          ${res.length>100?`<div style="text-align:center;padding:8px;color:#3d6b50;font-size:12px">+${res.length-100} autres</div>`:""}
+        </div>
+      </div>
+    `;
+  }
+
+  else if(activeTab==="graphique"){
+    // Graphique mensuel simple en barres CSS
+    const year=2026;
+    const monthly=[];
+    for(let m=0;m<12;m++){
+      const mr=allRes.filter(r=>r.ci.getFullYear()===year&&r.ci.getMonth()===m&&(propFilter==="all"||r.pid===propFilter));
+      monthly.push({m:MFR[m],net:mr.reduce((s,r)=>s+r.net,0),count:mr.length});
+    }
+    const maxVal=Math.max(...monthly.map(m=>m.net),1);
+    el.innerHTML=`
+      <div class="card">
+        <div class="sec">Revenu net mensuel ${year}</div>
+        <div style="display:flex;align-items:flex-end;gap:4px;height:160px;padding-bottom:20px;position:relative">
+          ${monthly.map(m=>{
+            const h=Math.round(m.net/maxVal*130);
+            return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px">
+              <div style="font-size:9px;color:#4ade80;font-family:monospace">${m.net>0?CAD(m.net).replace("$","").trim():""}</div>
+              <div style="width:100%;height:${h}px;background:linear-gradient(180deg,#4ade80,#2d6a45);border-radius:3px 3px 0 0;min-height:${m.net>0?2:0}px"></div>
+              <div style="font-size:9px;color:#3d6b50">${m.m}</div>
+            </div>`;
+          }).join("")}
+        </div>
+        <div class="sec" style="margin-top:14px">Réservations par mois ${year}</div>
+        <div style="display:flex;align-items:flex-end;gap:4px;height:80px;padding-bottom:20px">
+          ${monthly.map(m=>{
+            const maxC=Math.max(...monthly.map(x=>x.count),1);
+            const h=Math.round(m.count/maxC*55);
+            return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px">
+              <div style="font-size:9px;color:#60a5fa">${m.count>0?m.count:""}</div>
+              <div style="width:100%;height:${h}px;background:#60a5fa;border-radius:3px 3px 0 0;min-height:${m.count>0?2:0}px"></div>
+              <div style="font-size:9px;color:#3d6b50">${m.m}</div>
+            </div>`;
+          }).join("")}
+        </div>
+      </div>
+    `;
+  }
+
+  else if(activeTab==="cash"){
+    const totalBrut=CASH_2026.reduce((s,r)=>s+r.montant,0);
+    const totalDavid=CASH_2026.reduce((s,r)=>s+r.david,0);
+    const STATUT_COLOR={"payé":"#4ade80","partiel":"#f59e0b","à venir":"#60a5fa"};
+    el.innerHTML=`
+      <div class="card" style="margin-bottom:10px">
+        <div class="sec">Résumé Cash 2026</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:7px;margin-bottom:14px">
+          <div class="kpi"><div class="kpi-label">Brut total</div><div class="kpi-val" style="color:#a78bfa">${CAD(totalBrut)}</div><div class="kpi-sub">${CASH_2026.length} réservations</div></div>
+          <div class="kpi hi"><div class="kpi-label">Part David</div><div class="kpi-val" style="color:#4ade80">${CAD(totalDavid)}</div><div class="kpi-sub">Net David</div></div>
+        </div>
+        <div class="sec">Comment mettre à jour</div>
+        <div style="font-size:12px;color:#7aad90;line-height:1.6;background:#0a1a0c;border-radius:8px;padding:12px">
+          📊 Données du fichier Excel Dropbox (onglet "revenue CASH 2026").<br>
+          Pour ajouter une réservation : modifier le tableau <code style="color:#4ade80;background:#122a1a;padding:1px 5px;border-radius:3px">CASH_2026</code> dans <code style="color:#4ade80;background:#122a1a;padding:1px 5px;border-radius:3px">index.html</code> sur GitHub.<br>
+          👉 Prochaine version : formulaire d'ajout direct dans le dashboard.
+        </div>
+      </div>
+      <div class="card" style="overflow-x:auto">
+        <div class="sec">Réservations comptant 2026</div>
+        <table>
+          <thead><tr>
+            <th style="text-align:left">Locataire</th>
+            <th style="text-align:left">Propriété</th>
+            <th style="text-align:left">Check-in</th>
+            <th style="text-align:left">Check-out</th>
+            <th>Brut</th>
+            <th style="color:#4ade80">David</th>
+            <th style="text-align:left">Statut</th>
+            <th style="text-align:left">Note</th>
+          </tr></thead>
+          <tbody>
+            ${CASH_2026.map(r=>`<tr>
+              <td style="text-align:left;font-weight:600">${r.locataire||"—"}</td>
+              <td style="text-align:left">${r.nom}</td>
+              <td style="text-align:left;white-space:nowrap">${DT(r.ci)}</td>
+              <td style="text-align:left;white-space:nowrap">${DT(r.co)}</td>
+              <td>${CAD(r.montant)}</td>
+              <td style="color:#4ade80;font-weight:700">${CAD(r.david)}</td>
+              <td style="text-align:left"><span style="font-size:10px;background:${STATUT_COLOR[r.statut]||"#60a5fa"}22;color:${STATUT_COLOR[r.statut]||"#60a5fa"};border:1px solid ${STATUT_COLOR[r.statut]||"#60a5fa"}44;border-radius:4px;padding:2px 7px;font-family:monospace">${r.statut}</span></td>
+              <td style="text-align:left;font-size:11px;color:#3d6b50">${r.note||""}</td>
+            </tr>`).join("")}
+            <tr style="background:#0f1c12;font-weight:700">
+              <td style="text-align:left">TOTAL</td><td></td><td></td><td></td>
+              <td>${CAD(totalBrut)}</td>
+              <td style="color:#4ade80">${CAD(totalDavid)}</td>
+              <td></td><td></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    `;
+  }
+}
+
+// ── INIT ─────────────────────────────────────────────────────────────────────
+allRes=genDemo();
+render();
+</script>
+</body>
+</html>
