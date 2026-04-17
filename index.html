@@ -54,8 +54,22 @@ select{background:#0d1810;border:1px solid #1f3325;border-radius:7px;color:#dff0
   <div class="title">Revenus locatifs</div>
   <div class="btn-grp" id="header-btns">
     <span class="tag-demo" id="mode-badge">DÉMO</span>
-    <button class="chip" id="btn-connect" onclick="connect()">⚡ Connecter Guesty</button>
+    <button class="chip" id="btn-connect" onclick="toggleConnectForm()">⚡ Connecter Guesty</button>
     <button class="chip" id="btn-disconnect" style="display:none;border-color:#5a2a2a;color:#f87171" onclick="disconnect()">Déconnecter</button>
+  </div>
+  <div id="connect-form" style="display:none;margin-top:10px;background:#0a1a0c;border:1px solid #2d6a45;border-radius:10px;padding:12px 16px">
+    <div style="font-size:11px;color:#4ade80;font-weight:600;margin-bottom:10px">Connexion Guesty — entrez vos clés</div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
+      <div style="flex:1;min-width:180px">
+        <div style="font-size:10px;color:#3d6b50;font-family:monospace;margin-bottom:4px;letter-spacing:.1em">CLIENT ID</div>
+        <input id="manual-cid" type="text" placeholder="0oau4gj9hvEybturN5d7" style="background:#0d1810;border:1px solid #2d6a45;border-radius:6px;color:#dff0e6;padding:6px 10px;font-size:12px;outline:none;width:100%;font-family:monospace">
+      </div>
+      <div style="flex:2;min-width:250px">
+        <div style="font-size:10px;color:#3d6b50;font-family:monospace;margin-bottom:4px;letter-spacing:.1em">CLIENT SECRET</div>
+        <input id="manual-csec" type="password" placeholder="••••••••••••••••" style="background:#0d1810;border:1px solid #2d6a45;border-radius:6px;color:#dff0e6;padding:6px 10px;font-size:12px;outline:none;width:100%;font-family:monospace">
+      </div>
+      <button onclick="connectWithKeys()" style="background:#1a3a22;border:1px solid #4ade80;border-radius:8px;color:#4ade80;padding:7px 18px;font-size:13px;cursor:pointer;font-weight:700;white-space:nowrap">Se connecter</button>
+    </div>
   </div>
   <div class="err" id="err-msg" style="display:none"></div>
   <div class="info" id="info-msg" style="display:none"></div>
@@ -119,6 +133,7 @@ select{background:#0d1810;border:1px solid #1f3325;border-radius:7px;color:#dff0
     <button class="chip" id="tab-proprietes" onclick="setTab('proprietes')">Propriétés</button>
     <button class="chip" id="tab-reservations" onclick="setTab('reservations')">Réservations</button>
     <button class="chip" id="tab-graphique" onclick="setTab('graphique')">Graphique</button>
+    <button class="chip" id="tab-cash" onclick="setTab('cash')" style="border-color:#a78bfa;color:#a78bfa">💵 Cash 2026</button>
   </div>
 
   <div id="tab-content"></div>
@@ -127,16 +142,28 @@ select{background:#0d1810;border:1px solid #1f3325;border-radius:7px;color:#dff0
 <script>
 // ── CONFIG ──────────────────────────────────────────────────────────────────
 const PROXY = "https://guesty-proxy.onrender.com";
-const CID   = "0oau4brqocX5ytCT85d7";
-const CSC   = "ZCzj9z-eBr2exm8bY-Wr4UB2H3RLxYU_3TaTRkfQKJ7_sLqmEE_q9drxcRV9OOvz";
 
 const TPS=0.05,TVQ=0.09975,TH=0.035,GF=0.029,AO=0.03,AN=0.155;
 const CUT=new Date("2025-10-01"), TODAY=new Date("2026-04-05");
 const MFR=["Jan","Fév","Mar","Avr","Mai","Jun","Jul","Aoû","Sep","Oct","Nov","Déc"];
-const PNAMES={"188":"Sommer Bleu","250":"Blue Hill","1540":"Lodge Howard"};
+const PNAMES={"188":"O Sommet Bleu","250":"Blue Hill","1540":"Howard's Lodge"};
 const PIDS=["188","250","1540"];
 const TYL={airbnb_old:"Airbnb 3%",airbnb_new:"Airbnb 15.5%",direct_guesty:"Direct",cash:"Comptant"};
 const TYC={airbnb_old:"#f59e0b",airbnb_new:"#fb923c",direct_guesty:"#60a5fa",cash:"#a78bfa"};
+
+// ── DONNÉES CASH 2026 — Dropbox (dashboard-Chalet-spa-nature) ─────────────────
+// Source: onglet "revenue CASH 2026" — réservations comptant hors Guesty
+const CASH_2026 = [
+  {prop:"1540", nom:"Howard's Lodge",  locataire:"Evelyne Desrochers",  ci:new Date(2026,0,23), co:new Date(2026,0,25), montant:3500, david:1400, statut:"payé",    note:"enveloppe 2850"},
+  {prop:"1540", nom:"Howard's Lodge",  locataire:"Jean-François Tremblay", ci:new Date(2026,3,27), co:new Date(2026,3,29), montant:2900, david:1100, statut:"payé",    note:"enveloppe 2850"},
+  {prop:"188",  nom:"O Sommet Bleu",   locataire:"Marie-Claude Gagnon",  ci:new Date(2026,3,3),  co:new Date(2026,3,5),  montant:1400, david:350,  statut:"payé",    note:"enveloppe 2850"},
+  {prop:"1540", nom:"Howard's Lodge",  locataire:"Robert Côté",          ci:new Date(2026,3,17), co:new Date(2026,3,20), montant:3000, david:1100, statut:"partiel", note:"statut 1000"},
+  {prop:"188",  nom:"O Sommet Bleu",   locataire:"Sophie Lavoie",        ci:new Date(2026,3,30), co:new Date(2026,4,3),  montant:1300, david:300,  statut:"à venir", note:"a venir"},
+];
+
+// Totaux cash
+const CASH_TOTAL_DAVID = CASH_2026.reduce((s,r)=>s+r.david,0);
+const CASH_TOTAL_BRUT  = CASH_2026.reduce((s,r)=>s+r.montant,0);
 
 const QS=[
   {l:"T1 2025",f:new Date(2025,0,1),t:new Date(2025,2,31)},
@@ -247,14 +274,34 @@ function genDemo(){
 }
 
 // ── GUESTY API ───────────────────────────────────────────────────────────────
-async function connect(){
+function toggleConnectForm(){
+  const f=document.getElementById("connect-form");
+  f.style.display=f.style.display==="none"?"":"none";
+  // Pré-remplir avec les clés par défaut
+  if(f.style.display!=="none"){
+    document.getElementById("manual-cid").value=CID;
+    document.getElementById("manual-csec").value=CSC;
+  }
+}
+
+async function connectWithKeys(){
+  const cid=document.getElementById("manual-cid").value.trim();
+  const csec=document.getElementById("manual-csec").value.trim();
+  if(!cid||!csec){showErr("Entrez le Client ID et Client Secret.");return;}
+  showErr(""); showInfo("⏳ Connexion en cours...");
+  await connect(cid,csec);
+}
+
+async function connect(clientId, clientSecret){
+  const cid=clientId||CID;
+  const csec=clientSecret||CSC;
   showErr(""); showInfo("⏳ Connexion... 15-30 sec si serveur en veille.");
   document.getElementById("btn-connect").textContent="Connexion...";
   try{
     const tr=await fetch(PROXY+"/token",{
       method:"POST",
       headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({clientId:CID,clientSecret:CSC})
+      body:JSON.stringify({clientId:cid,clientSecret:csec})
     });
     if(!tr.ok) throw new Error("Token "+tr.status);
     const tj=await tr.json();
@@ -266,7 +313,7 @@ async function connect(){
       {operator:"$lte",field:"checkInDateLocalized",value:"2026-12-31"},
       {operator:"$in",field:"status",value:["confirmed","reserved"]}
     ]);
-    const fields="_id confirmationCode checkInDateLocalized checkOutDateLocalized createdAt integration source money.fareAccommodation money.hostPayout listingId listing.nickname";
+    const fields="_id confirmationCode checkInDateLocalized checkOutDateLocalized createdAt integration source money.fareAccommodation money.fareAccommodationAdjusted money.fareCleaning money.hostServiceFee money.hostServiceFeeIncTax money.totalTaxes money.hostPayout listingId listing.nickname listing._id";
 
     let raw=[],skip=0;
     while(true){
@@ -286,19 +333,61 @@ async function connect(){
       const pl=(r.integration?.platform||"manual").toLowerCase();
       const sl=(r.source||"manual").toLowerCase();
       const type=det(pl,sl,ci);
-      const gross=r.money?.fareAccommodation||r.money?.hostPayout||0;
-      const f=calcFin(type,gross);
+
+      // BRUT = fareAccommodation (loyer) + fareCleaning (ménage) — AVANT taxes et frais
+      const fareAccom = r.money?.fareAccommodationAdjusted || r.money?.fareAccommodation || 0;
+      const fareCleaning = r.money?.fareCleaning || 0;
+      const gross = fareAccom + fareCleaning;
+
+      // Frais plateforme Airbnb (hostServiceFee) ou calculé selon le type
+      const platformFee = r.money?.hostServiceFeeIncTax || r.money?.hostServiceFee || 0;
+
+      // Taxes (TPS+TVQ+taxe hébergement) retournées par Guesty
+      const totalTaxes = r.money?.totalTaxes || 0;
+
+      // Net = brut - frais plateforme - taxes
+      const net = Math.round((gross - platformFee - totalTaxes)*100)/100;
+
+      const f={
+        hf: Math.round(platformFee*100)/100,
+        tps: Math.round(gross*TPS*100)/100,
+        tvq: Math.round(gross*TVQ*100)/100,
+        th:  Math.round(gross*TH*100)/100,
+        gf:  0,
+        net: net > 0 ? net : Math.round((gross*(1-TPS-TVQ))*100)/100
+      };
+
       const bk=new Date(r.createdAt||ci);
       const nick=(r.listing?.nickname||"").toLowerCase();
-      let pid=r.listingId;
-      if(nick.includes("188")||nick.includes("sommer")) pid="188";
-      else if(nick.includes("250")||nick.includes("blue")) pid="250";
-      else if(nick.includes("1540")||nick.includes("lodge")) pid="1540";
-      return{id:r._id||"G"+i,pid,name:r.listing?.nickname||pid,ci,co,bk,nights,gross,pl,sl,type,...f,
+
+      // Mapping propriété par nickname
+      let pid="autre";
+      if(nick.includes("sommet")||nick.includes("sommer")||nick.includes("bleu")||nick.includes("188")) pid="188";
+      else if(nick.includes("blue hill")||nick.includes("250")) pid="250";
+      else if(nick.includes("howard")||nick.includes("lodge")||nick.includes("1540")) pid="1540";
+
+      return{id:r._id||"G"+i,pid,name:r.listing?.nickname||r.listingId,
+        listingId:r.listingId,ci,co,bk,nights,
+        gross:Math.round(gross*100)/100,
+        fareAccom:Math.round(fareAccom*100)/100,
+        fareCleaning:Math.round(fareCleaning*100)/100,
+        pl,sl,type,...f,
+        adr:nights>0?Math.round(f.net/nights*100)/100:0,
         lead:Math.max(0,Math.round((ci-bk)/86400000)),future:ci>TODAY};
-    });
+    }).filter(r=>r.pid!=="autre"); // Exclure les propriétés non mappées
 
     liveConnected=true;
+    document.getElementById("connect-form").style.display="none";
+    // Afficher les listings non mappés pour debug
+    const nonMappes=raw.filter(r=>{
+      const nick=(r.listing?.nickname||"").toLowerCase();
+      return !nick.includes("sommet")&&!nick.includes("sommer")&&!nick.includes("bleu")&&!nick.includes("188")&&!nick.includes("blue hill")&&!nick.includes("250")&&!nick.includes("howard")&&!nick.includes("lodge")&&!nick.includes("1540");
+    });
+    if(nonMappes.length>0){
+      const noms=[...new Set(nonMappes.map(r=>r.listing?.nickname||r.listingId))];
+      console.log("Listings non mappés:",noms);
+      showInfo("⚠ "+nonMappes.length+" rés. non mappées. Listings: "+noms.join(", "));
+    }
     document.getElementById("mode-badge").className="tag-live";
     document.getElementById("mode-badge").textContent="● LIVE "+allRes.length+" rés.";
     document.getElementById("btn-connect").style.display="none";
@@ -377,7 +466,10 @@ function toggleFut(){
 }
 function setTab(t){
   activeTab=t;
-  ["overview","proprietes","reservations","graphique"].forEach(x=>document.getElementById("tab-"+x).classList.toggle("on",x===t));
+  ["overview","proprietes","reservations","graphique","cash"].forEach(x=>{
+    const el=document.getElementById("tab-"+x);
+    if(el) el.classList.toggle("on",x===t);
+  });
   render();
 }
 
@@ -393,17 +485,24 @@ function render(){
   const fut=allRes.filter(r=>r.future&&(propFilter==="all"||r.pid===propFilter));
 
   // Period bar
+  // Cash filtré selon la période et propriété
+  const cashFiltered = CASH_2026.filter(r=>{
+    if(propFilter!=="all"&&r.prop!==propFilter) return false;
+    if(showFuture) return r.ci>TODAY;
+    return r.ci>=Q.f&&r.ci<=Q.t;
+  });
+  const cashBrut = cashFiltered.reduce((s,r)=>s+r.montant,0);
+  const cashDavid = cashFiltered.reduce((s,r)=>s+r.david,0);
+  const cashCommission = cashFiltered.reduce((s,r)=>s+r.commission,0);
+
   document.getElementById("period-bar").textContent=Q.l+" · "+DT(Q.f)+" → "+DT(Q.t);
 
-  // KPI financiers
+  // KPI financiers — Guesty + Cash combinés
   document.getElementById("kpi-fin").innerHTML=`
-    <div class="kpi hi"><div class="kpi-label">Revenu net</div><div class="kpi-val" style="color:#4ade80">${CAD(T.net)}</div><div class="kpi-sub">${res.length} rés. · ${T.nights} nuits</div></div>
-    <div class="kpi"><div class="kpi-label">Revenu brut</div><div class="kpi-val">${CAD(T.gross)}</div><div class="kpi-sub">Avant déductions</div></div>
+    <div class="kpi hi"><div class="kpi-label">Net total (Guesty+Cash)</div><div class="kpi-val" style="color:#4ade80">${CAD(T.net+cashDavid)}</div><div class="kpi-sub">Guesty ${CAD(T.net)} + Cash ${CAD(cashDavid)}</div></div>
+    <div class="kpi"><div class="kpi-label">Brut Guesty</div><div class="kpi-val">${CAD(T.gross)}</div><div class="kpi-sub">${res.length} réservations</div></div>
+    <div class="kpi" style="border-color:#a78bfa44"><div class="kpi-label">Brut Cash</div><div class="kpi-val" style="color:#a78bfa">${CAD(cashBrut)}</div><div class="kpi-sub">${cashFiltered.length} rés. comptant</div></div>
     <div class="kpi"><div class="kpi-label">Frais plateforme</div><div class="kpi-val" style="color:#f59e0b">${CAD(T.hf)}</div><div class="kpi-sub">Airbnb 3% ou 15.5%</div></div>
-    <div class="kpi warn"><div class="kpi-label">TPS collectée</div><div class="kpi-val" style="color:#f87171">${CAD(T.tps)}</div><div class="kpi-sub">À remettre</div></div>
-    <div class="kpi warn"><div class="kpi-label">TVQ collectée</div><div class="kpi-val" style="color:#f87171">${CAD(T.tvq)}</div><div class="kpi-sub">À remettre</div></div>
-    <div class="kpi warn"><div class="kpi-label">Taxe héberg.</div><div class="kpi-val" style="color:#fb923c">${CAD(T.th)}</div><div class="kpi-sub">3.5% QC — Direct</div></div>
-    <div class="kpi"><div class="kpi-label">Frais Guesty</div><div class="kpi-val" style="color:#a78bfa">${CAD(T.gf)}</div><div class="kpi-sub">2.9% — Direct</div></div>
   `;
 
   // KPI locatifs
@@ -455,36 +554,53 @@ function render(){
     const pstats=PIDS.map(pid=>{
       const pr=res.filter(r=>r.pid===pid);
       return{pid,nom:PNAMES[pid],...agg(pr)};
-    }).filter(p=>p.count>0).sort((a,b)=>b.net-a.net);
+    }).filter(p=>p.count>0||CASH_2026.some(c=>c.prop===p.pid)).sort((a,b)=>b.net-a.net);
+
+    // Cash par propriété pour la période
+    const cashParProp={};
+    PIDS.forEach(pid=>{
+      const cf=cashFiltered.filter(r=>r.prop===pid);
+      cashParProp[pid]={brut:cf.reduce((s,r)=>s+r.montant,0),david:cf.reduce((s,r)=>s+r.david,0),count:cf.length};
+    });
+
     el.innerHTML=`
       <div class="card" style="overflow-x:auto">
         <table>
           <thead><tr>
-            <th>Propriété</th><th>Brut</th><th style="color:#f59e0b">Frais</th>
+            <th>Propriété</th><th>Brut Guesty</th><th style="color:#a78bfa">Cash David</th>
+            <th style="color:#4ade80">Total Net</th>
+            <th style="color:#f59e0b">Frais</th>
             <th style="color:#f87171">TPS</th><th style="color:#f87171">TVQ</th>
-            <th style="color:#fb923c">Héberg.</th><th style="color:#4ade80">Net</th>
-            <th>Rés.</th><th>Nuits</th>
+            <th style="color:#fb923c">Héberg.</th>
+            <th>Rés.</th>
           </tr></thead>
           <tbody>
-            ${pstats.map(p=>`<tr>
-              <td style="font-weight:600;text-align:left">${p.nom}</td>
-              <td>${CAD(p.gross)}</td>
-              <td style="color:#f59e0b">${CAD(p.hf)}</td>
-              <td style="color:#f87171">${CAD(p.tps)}</td>
-              <td style="color:#f87171">${CAD(p.tvq)}</td>
-              <td style="color:#fb923c">${p.th>0?CAD(p.th):"—"}</td>
-              <td style="color:#4ade80;font-weight:700">${CAD(p.net)}</td>
-              <td>${p.count}</td><td>${p.nights}</td>
-            </tr>`).join("")}
+            ${PIDS.map(pid=>{
+              const p=pstats.find(x=>x.pid===pid)||{pid,nom:PNAMES[pid],net:0,gross:0,tps:0,tvq:0,th:0,hf:0,nights:0,count:0};
+              const cp=cashParProp[pid]||{brut:0,david:0,count:0};
+              const total=p.net+cp.david;
+              return `<tr>
+                <td style="font-weight:600;text-align:left">${p.nom}</td>
+                <td>${CAD(p.gross)}</td>
+                <td style="color:#a78bfa">${cp.brut>0?CAD(cp.david):"—"}</td>
+                <td style="color:#4ade80;font-weight:700">${CAD(total)}</td>
+                <td style="color:#f59e0b">${CAD(p.hf)}</td>
+                <td style="color:#f87171">${CAD(p.tps)}</td>
+                <td style="color:#f87171">${CAD(p.tvq)}</td>
+                <td style="color:#fb923c">${p.th>0?CAD(p.th):"—"}</td>
+                <td>${p.count}${cp.count>0?" +"+cp.count+"💵":""}</td>
+              </tr>`;
+            }).join("")}
             <tr style="background:#0f1c12;font-weight:700">
               <td style="text-align:left">TOTAL</td>
               <td>${CAD(T.gross)}</td>
+              <td style="color:#a78bfa">${CAD(cashDavid)}</td>
+              <td style="color:#4ade80">${CAD(T.net+cashDavid)}</td>
               <td style="color:#f59e0b">${CAD(T.hf)}</td>
               <td style="color:#f87171">${CAD(T.tps)}</td>
               <td style="color:#f87171">${CAD(T.tvq)}</td>
               <td style="color:#fb923c">${CAD(T.th)}</td>
-              <td style="color:#4ade80">${CAD(T.net)}</td>
-              <td>${res.length}</td><td>${T.nights}</td>
+              <td>${res.length}${cashFiltered.length>0?" +"+cashFiltered.length+"💵":""}</td>
             </tr>
           </tbody>
         </table>
@@ -555,6 +671,60 @@ function render(){
             </div>`;
           }).join("")}
         </div>
+      </div>
+    `;
+  }
+
+  else if(activeTab==="cash"){
+    const totalBrut=CASH_2026.reduce((s,r)=>s+r.montant,0);
+    const totalDavid=CASH_2026.reduce((s,r)=>s+r.david,0);
+    const STATUT_COLOR={"payé":"#4ade80","partiel":"#f59e0b","à venir":"#60a5fa"};
+    el.innerHTML=`
+      <div class="card" style="margin-bottom:10px">
+        <div class="sec">Résumé Cash 2026</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:7px;margin-bottom:14px">
+          <div class="kpi"><div class="kpi-label">Brut total</div><div class="kpi-val" style="color:#a78bfa">${CAD(totalBrut)}</div><div class="kpi-sub">${CASH_2026.length} réservations</div></div>
+          <div class="kpi hi"><div class="kpi-label">Part David</div><div class="kpi-val" style="color:#4ade80">${CAD(totalDavid)}</div><div class="kpi-sub">Net David</div></div>
+        </div>
+        <div class="sec">Comment mettre à jour</div>
+        <div style="font-size:12px;color:#7aad90;line-height:1.6;background:#0a1a0c;border-radius:8px;padding:12px">
+          📊 Données du fichier Excel Dropbox (onglet "revenue CASH 2026").<br>
+          Pour ajouter une réservation : modifier le tableau <code style="color:#4ade80;background:#122a1a;padding:1px 5px;border-radius:3px">CASH_2026</code> dans <code style="color:#4ade80;background:#122a1a;padding:1px 5px;border-radius:3px">index.html</code> sur GitHub.<br>
+          👉 Prochaine version : formulaire d'ajout direct dans le dashboard.
+        </div>
+      </div>
+      <div class="card" style="overflow-x:auto">
+        <div class="sec">Réservations comptant 2026</div>
+        <table>
+          <thead><tr>
+            <th style="text-align:left">Locataire</th>
+            <th style="text-align:left">Propriété</th>
+            <th style="text-align:left">Check-in</th>
+            <th style="text-align:left">Check-out</th>
+            <th>Brut</th>
+            <th style="color:#4ade80">David</th>
+            <th style="text-align:left">Statut</th>
+            <th style="text-align:left">Note</th>
+          </tr></thead>
+          <tbody>
+            ${CASH_2026.map(r=>`<tr>
+              <td style="text-align:left;font-weight:600">${r.locataire||"—"}</td>
+              <td style="text-align:left">${r.nom}</td>
+              <td style="text-align:left;white-space:nowrap">${DT(r.ci)}</td>
+              <td style="text-align:left;white-space:nowrap">${DT(r.co)}</td>
+              <td>${CAD(r.montant)}</td>
+              <td style="color:#4ade80;font-weight:700">${CAD(r.david)}</td>
+              <td style="text-align:left"><span style="font-size:10px;background:${STATUT_COLOR[r.statut]||"#60a5fa"}22;color:${STATUT_COLOR[r.statut]||"#60a5fa"};border:1px solid ${STATUT_COLOR[r.statut]||"#60a5fa"}44;border-radius:4px;padding:2px 7px;font-family:monospace">${r.statut}</span></td>
+              <td style="text-align:left;font-size:11px;color:#3d6b50">${r.note||""}</td>
+            </tr>`).join("")}
+            <tr style="background:#0f1c12;font-weight:700">
+              <td style="text-align:left">TOTAL</td><td></td><td></td><td></td>
+              <td>${CAD(totalBrut)}</td>
+              <td style="color:#4ade80">${CAD(totalDavid)}</td>
+              <td></td><td></td>
+            </tr>
+          </tbody>
+        </table>
       </div>
     `;
   }
